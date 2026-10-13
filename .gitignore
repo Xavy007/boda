@@ -1,0 +1,16 @@
+node_modules/
+dist/
+*.tsbuildinfo
+.env
+.env.local
+*.log
+.DS_Store
+.vscode/
+coverage/
+
+# Originales de fotos (respaldo local, pueden pesar mucho)
+fotos/
+
+# media/ SÍ se sube: son las fotos optimizadas subidas desde el panel en local.
+# En el plan gratis de Render el disco no es permanente, así que las fotos viajan con el código.
+media/photos.json.tmp

@@ -1,0 +1,90 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    /* Canales RGB — se sobrescriben con la paleta de EventSettings */
+    --c-ivory: 250 247 242;
+    --c-sage: 156 175 136;
+    --c-gold: 201 169 110;
+    --c-ink: 58 58 58;
+    color-scheme: light;
+  }
+
+  html {
+    -webkit-text-size-adjust: 100%;
+    -webkit-tap-highlight-color: transparent;
+    scroll-behavior: smooth;
+  }
+
+  body {
+    @apply bg-ivory font-sans text-ink antialiased;
+    overflow-x: hidden;
+    text-rendering: optimizeLegibility;
+  }
+
+  h1, h2, h3, h4 {
+    @apply font-serif;
+  }
+
+  :focus-visible {
+    outline: 2px solid rgb(var(--c-gold));
+    outline-offset: 3px;
+    border-radius: 4px;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    html { scroll-behavior: auto; }
+    *, *::before, *::after {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+    }
+  }
+}
+
+@layer components {
+  .eyebrow {
+    @apply font-sans text-[11px] font-medium uppercase tracking-widest2 text-gold;
+  }
+  .section-title {
+    @apply font-serif text-[2.4rem] font-normal leading-[1.05] text-ink sm:text-5xl;
+  }
+  .btn {
+    @apply inline-flex min-h-[48px] items-center justify-center gap-2 rounded-full px-6 text-sm font-medium tracking-wide transition
+      active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-50;
+  }
+  .btn-primary {
+    @apply btn bg-sage text-white shadow-[0_8px_24px_-10px_rgb(var(--c-sage))] hover:brightness-95;
+  }
+  .btn-gold {
+    @apply btn bg-gold text-white shadow-[0_8px_24px_-10px_rgb(var(--c-gold))] hover:brightness-95;
+  }
+  .btn-outline {
+    @apply btn border border-ink/15 bg-white/70 text-ink backdrop-blur hover:border-gold hover:text-gold;
+  }
+  .card {
+    @apply rounded-[28px] border border-ink/[0.06] bg-white/80 shadow-card backdrop-blur-sm;
+  }
+  .input {
+    @apply min-h-[48px] w-full rounded-2xl border border-ink/10 bg-white px-4 text-base text-ink placeholder:text-ink/35
+      transition focus:border-sage focus:outline-none focus:ring-4 focus:ring-sage/15;
+  }
+  .label {
+    @apply mb-1.5 block text-xs font-medium uppercase tracking-[0.14em] text-ink/60;
+  }
+  .paper-texture {
+    background-image:
+      radial-gradient(circle at 20% 15%, rgb(255 255 255 / 0.7), transparent 45%),
+      radial-gradient(circle at 80% 85%, rgb(var(--c-gold) / 0.08), transparent 50%),
+      radial-gradient(circle at 50% 50%, rgb(var(--c-sage) / 0.05), transparent 60%);
+  }
+}
+
+@layer utilities {
+  .text-balance { text-wrap: balance; }
+  .safe-bottom { padding-bottom: max(1rem, env(safe-area-inset-bottom)); }
+  .no-scrollbar::-webkit-scrollbar { display: none; }
+  .no-scrollbar { scrollbar-width: none; }
+}

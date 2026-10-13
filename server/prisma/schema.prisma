@@ -1,0 +1,137 @@
+// Prisma + Supabase (PostgreSQL)
+// La base guarda solo invitaciones, invitados, dispositivos, accesos y la configuración.
+// Las fotos viven en el proyecto (client/public/fotos), ver `npm run fotos`.
+// - DATABASE_URL: pooler (6543, pgbouncer=true) para las consultas de la app
+// - DIRECT_URL:   conexión directa (5432) para las migraciones
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+enum InvitationStatus {
+  PENDIENTE
+  CONFIRMADO
+  RECHAZADO
+}
+
+model Invitation {
+  id             String           @id @default(cuid())
+  token          String           @unique
+  familyName     String
+  contactPhone   String?
+  contactEmail   String?
+  maxGuests      Int              @default(2)
+  maxDevices     Int              @default(2)
+  status         InvitationStatus @default(PENDIENTE)
+  sentAt         DateTime?
+  firstOpenedAt  DateTime?
+  confirmedAt    DateTime?
+  /// Nombre de la persona que respondió el RSVP
+  respondentName String?
+  /// Cantidad de personas que asisten (0 si no asisten o no respondieron)
+  attendingCount Int              @default(0)
+  dietaryNotes   String?
+  message        String?
+  notes          String?
+  createdAt      DateTime         @default(now())
+  updatedAt      DateTime         @updatedAt
+
+  devices    InvitationDevice[]
+  accessLogs AccessLog[]
+
+  @@index([status])
+}
+
+model InvitationDevice {
+  id              String     @id @default(cuid())
+  invitationId    String
+  invitation      Invitation @relation(fields: [invitationId], references: [id], onDelete: Cascade)
+  deviceId        String
+  fingerprintHash String?
+  firstSeen       DateTime   @default(now())
+  lastSeen        DateTime   @default(now())
+
+  @@unique([invitationId, deviceId])
+  @@index([invitationId, fingerprintHash])
+}
+
+model AccessLog {
+  id              String      @id @default(cuid())
+  invitationId    String?
+  invitation      Invitation? @relation(fields: [invitationId], references: [id], onDelete: SetNull)
+  ip              String?
+  userAgent       String?
+  fingerprintHash String?
+  allowed         Boolean
+  reason          String?
+  createdAt       DateTime    @default(now())
+
+  @@index([invitationId, createdAt])
+  @@index([allowed, createdAt])
+}
+
+/// Una sola fila (id = 1)
+model EventSettings {
+  id             Int       @id @default(1)
+  partnerOneName String
+  partnerTwoName String
+  eventDate      DateTime
+  eventEndDate   DateTime?
+  timezone       String    @default("America/La_Paz")
+
+  ceremonyName    String
+  ceremonyAddress String
+  ceremonyLat     Float?
+  ceremonyLng     Float?
+  ceremonyMapsUrl String?
+
+  receptionName    String
+  receptionAddress String
+  receptionTime    String?
+  receptionLat     Float?
+  receptionLng     Float?
+  receptionMapsUrl String?
+
+  dressCode       String
+  dressCodeNote   String?
+  /// string[] con colores HEX sugeridos
+  dressCodeColors Json    @default("[]")
+
+  mainPhrase    String
+  quotePhrase   String?
+  quoteAuthor   String?
+  closingPhrase String?
+
+  rsvpDeadline     DateTime
+  /// Cupos por defecto al crear o importar invitaciones sin cupos indicados
+  defaultMaxGuests Int      @default(2)
+  /// { message, registryName, registryUrl, bankName, accountHolder, accountNumber, accountType, documentId, alias }
+  giftInfo         Json     @default("{}")
+
+  couplePhone      String
+  whatsappTemplate String
+
+  /// { ivory, sage, gold, ink }
+  palette  Json    @default("{}")
+  musicUrl String?
+
+  /// [{ date, title, text }]
+  storyItems Json @default("[]")
+  /// [{ time, title, description, icon }]
+  itinerary  Json @default("[]")
+
+  updatedAt DateTime @updatedAt
+}
+
+model AdminUser {
+  id           String   @id @default(cuid())
+  email        String   @unique
+  passwordHash String
+  createdAt    DateTime @default(now())
+}
