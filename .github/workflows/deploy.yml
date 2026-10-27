@@ -47,8 +47,15 @@ jobs:
           RENDER_DEPLOY_HOOK_URL: ${{ secrets.RENDER_DEPLOY_HOOK_URL }}
         run: |
           if [ -z "$RENDER_DEPLOY_HOOK_URL" ]; then
-            echo "::warning::Falta el secret RENDER_DEPLOY_HOOK_URL (GitHub → Settings → Secrets and variables → Actions). Se omite el deploy."
-            exit 0
+            echo "::error::Falta el secret RENDER_DEPLOY_HOOK_URL (GitHub → Settings → Secrets and variables → Actions). No se desplegó nada."
+            exit 1
           fi
-          curl -fsS -X POST "$RENDER_DEPLOY_HOOK_URL"
-          echo "✅ Deploy solicitado a Render"
+          response=$(curl -sS -w "\n%{http_code}" -X POST "$RENDER_DEPLOY_HOOK_URL")
+          status=$(echo "$response" | tail -n1)
+          body=$(echo "$response" | sed '$d')
+          echo "Respuesta de Render (HTTP $status): $body"
+          if [ "$status" -lt 200 ] || [ "$status" -ge 300 ]; then
+            echo "::error::Render rechazó el deploy hook (HTTP $status). Revisa que la URL del secret sea la del servicio correcto."
+            exit 1
+          fi
+          echo "::notice::✅ Deploy solicitado a Render. Mira el progreso en dashboard.render.com → invitacion-boda → Events."
