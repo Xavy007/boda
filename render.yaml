@@ -1,6 +1,6 @@
 services:
   - type: web
-    name: invitacion-boda
+    name: boda
     runtime: node
     plan: free
     region: oregon

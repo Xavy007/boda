@@ -58,4 +58,4 @@ jobs:
             echo "::error::Render rechazó el deploy hook (HTTP $status). Revisa que la URL del secret sea la del servicio correcto."
             exit 1
           fi
-          echo "::notice::✅ Deploy solicitado a Render. Mira el progreso en dashboard.render.com → invitacion-boda → Events."
+          echo "::notice::✅ Deploy solicitado a Render. Mira el progreso en https://dashboard.render.com → boda → Events (sitio: https://boda-hsbh.onrender.com)."

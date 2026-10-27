@@ -129,7 +129,7 @@ En producción Express sirve el build de React desde `client/dist` (un solo serv
 1. **Render** → [dashboard.render.com](https://dashboard.render.com) → **New → Blueprint** → conecta GitHub y elige el repo `boda`. Render lee `render.yaml` (plan **free**).
 2. Cuando te pida las variables, completa:
    - `DATABASE_URL` y `DIRECT_URL`: las de Supabase (paso 1).
-   - `CLIENT_URL`: la URL que te da Render, p. ej. `https://invitacion-boda.onrender.com` (puedes poner una provisional y corregirla después en *Environment*).
+   - `CLIENT_URL`: la URL que te da Render, en este proyecto `https://boda-hsbh.onrender.com` (sin `/` al final; si cambia, corrígela en *Environment*).
    - `JWT_SECRET` y `COOKIE_SECRET` se generan solos.
 3. En el servicio → **Settings → Deploy Hook** → copia la URL.
 4. **GitHub** → repo → **Settings → Secrets and variables → Actions → New repository secret**:
