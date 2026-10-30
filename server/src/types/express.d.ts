@@ -1,4 +1,4 @@
-import type { EventSettings, Invitation } from '@prisma/client';
+import type { AdminRole, EventSettings, Invitation } from '@prisma/client';
 
 declare global {
   namespace Express {
@@ -6,6 +6,7 @@ declare global {
       invitation?: Invitation;
       eventSettings?: EventSettings;
       adminId?: string;
+      adminRole?: AdminRole;
     }
   }
 }

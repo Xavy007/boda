@@ -1,10 +1,31 @@
 import type { InvitationStatus, Palette, GiftInfo, ItineraryItem, StoryItem } from '@/lib/types';
 
+export type AdminRole = 'ADMIN' | 'PLANNER' | 'NOVIOS';
+
+export interface AdminMe {
+  email: string;
+  role: AdminRole;
+}
+
+export interface TeamMember {
+  id: string;
+  email: string;
+  role: Exclude<AdminRole, 'ADMIN'>;
+  createdAt: string;
+}
+
+export const ROLE_LABELS: Record<AdminRole, string> = {
+  ADMIN: 'Administrador',
+  PLANNER: 'Wedding planner',
+  NOVIOS: 'Novios',
+};
+
 export type DisplayStatus = 'NO_ENVIADO' | 'ENVIADO' | 'ABIERTO' | 'CONFIRMADO' | 'RECHAZADO';
 
+/** token, link, whatsapp* y la respuesta llegan vacíos para los novios (solo cargan datos) */
 export interface AdminInvitation {
   id: string;
-  token: string;
+  token: string | null;
   familyName: string;
   contactPhone: string | null;
   contactEmail: string | null;
@@ -18,11 +39,13 @@ export interface AdminInvitation {
   notes: string | null;
   respondentName: string | null;
   attendingCount: number;
+  dietaryNotes: string | null;
+  message: string | null;
   deviceCount: number;
   blockedCount: number;
-  link: string;
+  link: string | null;
   whatsappUrl: string | null;
-  whatsappText: string;
+  whatsappText: string | null;
   createdAt: string;
 }
 

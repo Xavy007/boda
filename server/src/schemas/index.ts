@@ -42,6 +42,17 @@ export const invitationCreateSchema = z.object({
   notes: optionalText(2000),
 });
 
+export const teamMemberCreateSchema = z.object({
+  email: z.string().trim().toLowerCase().email('Email inválido').max(160),
+  role: z.enum(['PLANNER', 'NOVIOS']),
+  password: z.string().min(10, 'La contraseña debe tener al menos 10 caracteres').max(200),
+});
+
+/** Datos de contacto: lo que la planner y los novios pueden corregir */
+export const invitationContactSchema = invitationCreateSchema
+  .pick({ familyName: true, contactPhone: true, contactEmail: true })
+  .partial();
+
 export const invitationUpdateSchema = invitationCreateSchema.partial().extend({
   status: z.enum(['PENDIENTE', 'CONFIRMADO', 'RECHAZADO']).optional(),
 });

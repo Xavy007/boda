@@ -1,6 +1,6 @@
 import type { Request, Response } from 'express';
 import { prisma } from '../../lib/prisma.js';
-import { invitationCreateSchema, invitationUpdateSchema } from '../../schemas/index.js';
+import { invitationContactSchema, invitationCreateSchema, invitationUpdateSchema } from '../../schemas/index.js';
 import { getSettings } from '../../services/event.service.js';
 import { importInvitations } from '../../services/import.service.js';
 import { generateToken, invitationUrl } from '../../services/token.service.js';
@@ -24,7 +24,9 @@ function fillTemplate(template: string, inv: { familyName: string; maxGuests: nu
     .replaceAll('{link}', invitationUrl(inv.token));
 }
 
-export async function listInvitations(_req: Request, res: Response) {
+export async function listInvitations(req: Request, res: Response) {
+  // Los novios solo cargan datos: no ven los links privados ni las respuestas
+  const canSend = req.adminRole !== 'NOVIOS';
   const [invitations, blocked, settings] = await Promise.all([
     prisma.invitation.findMany({
       orderBy: { createdAt: 'desc' },
@@ -45,7 +47,7 @@ export async function listInvitations(_req: Request, res: Response) {
       const number = toWhatsappNumber(inv.contactPhone);
       return {
         id: inv.id,
-        token: inv.token,
+        token: canSend ? inv.token : null,
         familyName: inv.familyName,
         contactPhone: inv.contactPhone,
         contactEmail: inv.contactEmail,
@@ -57,13 +59,15 @@ export async function listInvitations(_req: Request, res: Response) {
         firstOpenedAt: inv.firstOpenedAt,
         confirmedAt: inv.confirmedAt,
         notes: inv.notes,
-        respondentName: inv.respondentName,
-        attendingCount: inv.attendingCount,
+        respondentName: canSend ? inv.respondentName : null,
+        attendingCount: canSend ? inv.attendingCount : 0,
+        dietaryNotes: canSend ? inv.dietaryNotes : null,
+        message: canSend ? inv.message : null,
         deviceCount: inv._count.devices,
         blockedCount: blockedMap.get(inv.id) ?? 0,
-        link: invitationUrl(inv.token),
-        whatsappUrl: number ? `https://wa.me/${number}?text=${encodeURIComponent(text)}` : null,
-        whatsappText: text,
+        link: canSend ? invitationUrl(inv.token) : null,
+        whatsappUrl: canSend && number ? `https://wa.me/${number}?text=${encodeURIComponent(text)}` : null,
+        whatsappText: canSend ? text : null,
         createdAt: inv.createdAt,
       };
     }),
@@ -83,15 +87,28 @@ export async function getInvitationDetail(req: Request, res: Response) {
 }
 
 export async function createInvitation(req: Request, res: Response) {
-  const data = invitationCreateSchema.parse(req.body);
+  const { maxDevices, ...data } = invitationCreateSchema.parse(req.body);
+  // El máximo de dispositivos es una medida de seguridad: solo lo elige el administrador
+  const devices = req.adminRole === 'ADMIN' ? maxDevices : undefined;
   const maxGuests = data.maxGuests ?? (await getSettings()).defaultMaxGuests;
-  const inv = await prisma.invitation.create({ data: { ...data, maxGuests, token: generateToken() } });
+  const inv = await prisma.invitation.create({ data: { ...data, maxGuests, maxDevices: devices, token: generateToken() } });
   res.status(201).json(inv);
 }
 
 export async function updateInvitation(req: Request, res: Response) {
   const data = invitationUpdateSchema.parse(req.body);
   const inv = await prisma.invitation.update({ where: { id: String(req.params.id) }, data });
+  res.json(inv);
+}
+
+/** Nombre, teléfono y email: lo único que la planner y los novios pueden editar */
+export async function updateContact(req: Request, res: Response) {
+  const data = invitationContactSchema.parse(req.body);
+  const inv = await prisma.invitation.update({
+    where: { id: String(req.params.id) },
+    data,
+    select: { familyName: true, contactPhone: true, contactEmail: true },
+  });
   res.json(inv);
 }
 

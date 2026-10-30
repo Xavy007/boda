@@ -169,6 +169,22 @@ En producción Express sirve el build de React desde `client/dist` (un solo serv
 - **Invitados:** búsqueda, filtros (No enviado / Enviado / Abierto / Confirmado / Rechazado / Bloqueado), **Enviar por WhatsApp** (abre `wa.me` con la plantilla y marca `sentAt`), *Reenviar* para quienes no abrieron, copiar link, detalle con quién confirmó, cuántas personas asisten, restricciones alimentarias, mensaje, dispositivos y logs, editar cupos / máx. dispositivos, **liberar dispositivos**, generar link nuevo, importar CSV/Excel y exportar a Excel.
 - **Evento:** nombres, fechas, **cupos por defecto por invitación** (2 al inicio), lugares, coordenadas, textos, dress code, regalos, plantilla de WhatsApp, paleta de colores, música, historia e itinerario.
 
+### Equipo: administrador, wedding planner y novios
+
+Panel → Evento → **Equipo** → email, contraseña y rol → *Crear cuenta*. Todos entran por el mismo `/admin/login`. La cuenta creada por el seed (`SEED_ADMIN_EMAIL`) es la de **administrador**.
+
+| | Administrador | Wedding planner | Novios |
+| --- | :-: | :-: | :-: |
+| Crear familias e importar CSV/Excel | ✓ | ✓ | ✓ |
+| Editar nombre, teléfono y email | ✓ | ✓ | ✓ |
+| Ver quién confirmó, cuántas personas, restricciones y mensajes | ✓ | ✓ | — |
+| Enviar links por WhatsApp / copiar link | ✓ | ✓ | — |
+| Reporte (Inicio) y exportar Excel | ✓ | ✓ | — |
+| Cambiar cupos o dispositivos, borrar, regenerar links | ✓ | — | — |
+| Fotos, configuración del evento, equipo, accesos y bloqueos | ✓ | — | — |
+
+Los novios no reciben los links privados ni las respuestas (el servidor no se los envía). Los permisos se validan en el servidor (403), y *Quitar acceso* cierra la sesión al instante.
+
 ### Importar invitados
 
 Archivo `.csv` (coma o punto y coma) o `.xlsx` con las columnas:

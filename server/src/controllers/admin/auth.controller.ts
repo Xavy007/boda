@@ -21,7 +21,7 @@ export async function login(req: Request, res: Response) {
     expiresIn: Math.floor(ADMIN_SESSION_MS / 1000),
   });
   res.cookie(ADMIN_COOKIE, token, adminCookieOptions);
-  res.json({ email: admin.email });
+  res.json({ email: admin.email, role: admin.role });
 }
 
 export function logout(_req: Request, res: Response) {
@@ -30,7 +30,7 @@ export function logout(_req: Request, res: Response) {
 }
 
 export async function me(req: Request, res: Response) {
-  const admin = await prisma.adminUser.findUnique({ where: { id: req.adminId }, select: { email: true } });
+  const admin = await prisma.adminUser.findUnique({ where: { id: req.adminId }, select: { email: true, role: true } });
   if (!admin) throw new HttpError(401, 'UNAUTHORIZED');
   res.json(admin);
 }

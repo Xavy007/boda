@@ -35,7 +35,7 @@ export default function AdminLogin() {
         animate={{ opacity: 1, y: 0 }}
         className="card relative w-full max-w-sm p-7 sm:p-9"
       >
-        <p className="eyebrow text-center">Panel de los novios</p>
+        <p className="eyebrow text-center">Panel de la boda</p>
         <h1 className="mt-3 text-center font-serif text-4xl">Bienvenidos</h1>
         <Divider className="my-6" />
         <label className="label" htmlFor="email">Email</label>

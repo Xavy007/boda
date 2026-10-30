@@ -3,7 +3,7 @@ import { IconCopy, IconWhatsapp } from '@/components/Icons';
 import { api, ApiError, downloadFile } from '@/lib/api';
 import { copyText } from '@/lib/format';
 import { fmtDateTime, type AdminInvitation, type DisplayStatus, type InvitationDetail } from './types';
-import { EmptyState, Field, Modal, PageHeader, StatusBadge, useToast } from './ui';
+import { EmptyState, Field, Modal, PageHeader, StatusBadge, useAdminMe, useToast } from './ui';
 
 type Filter = 'TODOS' | DisplayStatus | 'BLOQUEADO';
 
@@ -21,10 +21,14 @@ const normalize = (s: string) => s.toLowerCase().normalize('NFD').replace(/[̀-�
 
 export default function Invitations() {
   const toast = useToast();
+  const { role } = useAdminMe();
+  const isAdmin = role === 'ADMIN';
+  const canSend = role !== 'NOVIOS';
   const [items, setItems] = useState<AdminInvitation[] | null>(null);
   const [filter, setFilter] = useState<Filter>('TODOS');
   const [query, setQuery] = useState('');
   const [detailId, setDetailId] = useState<string | null>(null);
+  const [contactFor, setContactFor] = useState<AdminInvitation | null>(null);
   const [creating, setCreating] = useState(false);
   const [importing, setImporting] = useState(false);
   const [defaultMax, setDefaultMax] = useState(2);
@@ -37,10 +41,11 @@ export default function Invitations() {
 
   useEffect(load, [load]);
   useEffect(() => {
+    if (!isAdmin) return;
     api<{ defaultMaxGuests: number }>('/api/admin/settings')
       .then((s) => setDefaultMax(s.defaultMaxGuests))
       .catch(() => undefined);
-  }, []);
+  }, [isAdmin]);
 
   const filtered = useMemo(() => {
     if (!items) return [];
@@ -63,11 +68,15 @@ export default function Invitations() {
   }, [items]);
 
   const sendWhatsapp = async (inv: AdminInvitation) => {
+    if (!inv.whatsappUrl && !isAdmin) {
+      setContactFor(inv);
+      return;
+    }
     if (inv.whatsappUrl) {
       // Se abre en el mismo gesto del click para que el navegador no lo bloquee
       window.open(inv.whatsappUrl, '_blank', 'noopener');
     } else {
-      await copyText(inv.whatsappText);
+      await copyText(inv.whatsappText ?? '');
       toast('Sin teléfono: copiamos el mensaje para que lo envíes tú');
     }
     try {
@@ -79,7 +88,7 @@ export default function Invitations() {
   };
 
   const copyLink = async (inv: AdminInvitation) => {
-    if (await copyText(inv.link)) toast('Link copiado');
+    if (inv.link && (await copyText(inv.link))) toast('Link copiado');
   };
 
   return (
@@ -91,9 +100,11 @@ export default function Invitations() {
           <>
             <button type="button" className="btn-primary" onClick={() => setCreating(true)}>+ Nueva</button>
             <button type="button" className="btn-outline" onClick={() => setImporting(true)}>Importar</button>
-            <button type="button" className="btn-outline" onClick={() => downloadFile('/api/admin/export', 'invitados-boda.xlsx').catch(() => toast('Error al exportar', 'error'))}>
-              Exportar
-            </button>
+            {canSend && (
+              <button type="button" className="btn-outline" onClick={() => downloadFile('/api/admin/export', 'invitados-boda.xlsx').catch(() => toast('Error al exportar', 'error'))}>
+                Exportar
+              </button>
+            )}
           </>
         }
       />
@@ -106,18 +117,20 @@ export default function Invitations() {
         onChange={(e) => setQuery(e.target.value)}
         aria-label="Buscar invitación"
       />
-      <div className="no-scrollbar -mx-4 mt-3 flex gap-2 overflow-x-auto px-4 pb-1">
-        {FILTERS.map((f) => (
-          <button
-            key={f.value}
-            type="button"
-            onClick={() => setFilter(f.value)}
-            className={`min-h-[40px] shrink-0 rounded-full px-4 text-sm font-medium transition ${filter === f.value ? 'bg-ink text-white' : 'bg-white text-ink/70 ring-1 ring-ink/10'}`}
-          >
-            {f.label} <span className="opacity-60">{counts[f.value] ?? 0}</span>
-          </button>
-        ))}
-      </div>
+      {canSend && (
+        <div className="no-scrollbar -mx-4 mt-3 flex gap-2 overflow-x-auto px-4 pb-1">
+          {FILTERS.filter((f) => isAdmin || f.value !== 'BLOQUEADO').map((f) => (
+            <button
+              key={f.value}
+              type="button"
+              onClick={() => setFilter(f.value)}
+              className={`min-h-[40px] shrink-0 rounded-full px-4 text-sm font-medium transition ${filter === f.value ? 'bg-ink text-white' : 'bg-white text-ink/70 ring-1 ring-ink/10'}`}
+            >
+              {f.label} <span className="opacity-60">{counts[f.value] ?? 0}</span>
+            </button>
+          ))}
+        </div>
+      )}
 
       <div className="mt-5 space-y-3">
         {items === null && <p className="text-sm text-ink/50">Cargando…</p>}
@@ -125,39 +138,62 @@ export default function Invitations() {
         {filtered.map((inv) => (
           <article key={inv.id} className="card !rounded-3xl p-4 sm:p-5">
             <div className="flex flex-wrap items-start justify-between gap-3">
-              <button type="button" onClick={() => setDetailId(inv.id)} className="min-w-0 text-left">
+              <button type="button" onClick={() => (isAdmin ? setDetailId(inv.id) : setContactFor(inv))} className="min-w-0 text-left">
                 <p className="truncate font-serif text-2xl leading-tight hover:text-gold">{inv.familyName}</p>
                 <p className="mt-1 text-xs text-ink/50">
-                  {inv.status === 'CONFIRMADO' ? `${inv.attendingCount} de ${inv.maxGuests} asisten${inv.respondentName ? ` (${inv.respondentName})` : ''}` : `${inv.maxGuests} cupos`} · {inv.deviceCount}/{inv.maxDevices} dispositivos
-                  {inv.contactPhone ? ` · ${inv.contactPhone}` : ''}
+                  {canSend && inv.status === 'CONFIRMADO' ? `${inv.attendingCount} de ${inv.maxGuests} asisten${inv.respondentName ? ` (${inv.respondentName})` : ''}` : `${inv.maxGuests} cupos`}
+                  {isAdmin && ` · ${inv.deviceCount}/${inv.maxDevices} dispositivos`}
+                  {inv.contactPhone ? ` · ${inv.contactPhone}` : ' · sin teléfono'}
                 </p>
               </button>
-              <div className="flex flex-wrap gap-1.5">
-                <StatusBadge status={inv.displayStatus} />
-                {inv.blockedCount > 0 && <StatusBadge status="BLOQUEADO" />}
-              </div>
+              {canSend && (
+                <div className="flex flex-wrap gap-1.5">
+                  <StatusBadge status={inv.displayStatus} />
+                  {isAdmin && inv.blockedCount > 0 && <StatusBadge status="BLOQUEADO" />}
+                </div>
+              )}
             </div>
             <div className="mt-4 flex flex-wrap gap-2">
-              <button type="button" onClick={() => sendWhatsapp(inv)} className="btn min-h-[44px] bg-[#25D366] px-4 text-white">
-                <IconWhatsapp className="h-5 w-5" />
-                {inv.sentAt && !inv.firstOpenedAt ? 'Reenviar' : inv.sentAt ? 'WhatsApp' : 'Enviar por WhatsApp'}
-              </button>
-              <button type="button" onClick={() => copyLink(inv)} className="btn-outline min-h-[44px] px-4">
-                <IconCopy className="h-4 w-4" /> Copiar link
-              </button>
-              <button type="button" onClick={() => setDetailId(inv.id)} className="btn-outline min-h-[44px] px-4">
-                Detalle
-              </button>
+              {canSend && (
+                <>
+                  <button type="button" onClick={() => sendWhatsapp(inv)} className="btn min-h-[44px] bg-[#25D366] px-4 text-white">
+                    <IconWhatsapp className="h-5 w-5" />
+                    {inv.sentAt && !inv.firstOpenedAt ? 'Reenviar' : inv.sentAt ? 'WhatsApp' : 'Enviar por WhatsApp'}
+                  </button>
+                  <button type="button" onClick={() => copyLink(inv)} className="btn-outline min-h-[44px] px-4">
+                    <IconCopy className="h-4 w-4" /> Copiar link
+                  </button>
+                </>
+              )}
+              {isAdmin ? (
+                <button type="button" onClick={() => setDetailId(inv.id)} className="btn-outline min-h-[44px] px-4">
+                  Detalle
+                </button>
+              ) : (
+                <button type="button" onClick={() => setContactFor(inv)} className="btn-outline min-h-[44px] px-4">
+                  {inv.respondentName ? 'Ver respuesta' : inv.contactPhone ? 'Editar datos' : '+ Agregar teléfono'}
+                </button>
+              )}
             </div>
           </article>
         ))}
       </div>
 
+      <ContactModal
+        invitation={contactFor}
+        onClose={() => setContactFor(null)}
+        onSaved={() => {
+          setContactFor(null);
+          toast('Datos guardados');
+          load();
+        }}
+      />
       <DetailModal id={detailId} onClose={() => setDetailId(null)} onChanged={load} />
       <Modal open={creating} onClose={() => setCreating(false)} title="Nueva invitación">
         <InvitationForm
           key={defaultMax}
           initial={{ maxGuests: defaultMax }}
+          showDevices={isAdmin}
           onSaved={() => {
             setCreating(false);
             toast('Invitación creada');
@@ -180,7 +216,7 @@ interface FormValues {
   notes: string;
 }
 
-function InvitationForm({ initial, id, onSaved }: { initial?: Partial<FormValues>; id?: string; onSaved: () => void }) {
+function InvitationForm({ initial, id, onSaved, showDevices = true }: { initial?: Partial<FormValues>; id?: string; onSaved: () => void; showDevices?: boolean }) {
   const [values, setValues] = useState<FormValues>({
     familyName: '',
     contactPhone: '',
@@ -223,9 +259,11 @@ function InvitationForm({ initial, id, onSaved }: { initial?: Partial<FormValues
         <Field label="Cupos">
           <input className="input" type="number" min={1} max={30} value={values.maxGuests} onChange={(e) => set('maxGuests', Number(e.target.value))} />
         </Field>
-        <Field label="Máx. dispositivos">
-          <input className="input" type="number" min={1} max={10} value={values.maxDevices} onChange={(e) => set('maxDevices', Number(e.target.value))} />
-        </Field>
+        {showDevices && (
+          <Field label="Máx. dispositivos">
+            <input className="input" type="number" min={1} max={10} value={values.maxDevices} onChange={(e) => set('maxDevices', Number(e.target.value))} />
+          </Field>
+        )}
       </div>
       <Field label="Notas internas">
         <textarea className="input min-h-[80px] py-3" value={values.notes} onChange={(e) => set('notes', e.target.value)} />
@@ -233,6 +271,70 @@ function InvitationForm({ initial, id, onSaved }: { initial?: Partial<FormValues
       {error && <p className="rounded-xl bg-red-50 px-4 py-3 text-sm text-red-700">{error}</p>}
       <button type="submit" className="btn-primary" disabled={saving}>{saving ? 'Guardando…' : 'Guardar'}</button>
     </form>
+  );
+}
+
+// ── Datos de contacto y respuesta (planner y novios) ─────────────────────────
+function ContactModal({ invitation, onClose, onSaved }: { invitation: AdminInvitation | null; onClose: () => void; onSaved: () => void }) {
+  const [values, setValues] = useState({ familyName: '', contactPhone: '', contactEmail: '' });
+  const [error, setError] = useState<string | null>(null);
+  const [saving, setSaving] = useState(false);
+  const set = (k: keyof typeof values, v: string) => setValues((p) => ({ ...p, [k]: v }));
+
+  useEffect(() => {
+    setValues({
+      familyName: invitation?.familyName ?? '',
+      contactPhone: invitation?.contactPhone ?? '',
+      contactEmail: invitation?.contactEmail ?? '',
+    });
+    setError(null);
+  }, [invitation]);
+
+  const submit = async (e: FormEvent) => {
+    e.preventDefault();
+    if (!invitation) return;
+    setSaving(true);
+    setError(null);
+    try {
+      await api(`/api/admin/invitations/${invitation.id}/contact`, { method: 'PUT', body: values });
+      onSaved();
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : 'Error al guardar');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <Modal open={Boolean(invitation)} onClose={onClose} title={invitation?.familyName ?? ''}>
+      <form onSubmit={submit} className="grid gap-4">
+        {invitation && (invitation.respondentName ? (
+          <div className="rounded-2xl bg-white p-4 text-sm">
+            <p className="font-medium">
+              {invitation.status === 'CONFIRMADO'
+                ? `Asisten ${invitation.attendingCount} de ${invitation.maxGuests} ${invitation.attendingCount === 1 ? 'persona' : 'personas'}`
+                : 'No asisten'}
+            </p>
+            <p className="mt-1 text-ink/65">Respondió: {invitation.respondentName} · {fmtDateTime(invitation.confirmedAt)}</p>
+            {invitation.dietaryNotes && <p className="mt-1 text-xs text-ink/55">🍽 {invitation.dietaryNotes}</p>}
+            {invitation.message && <p className="mt-2 font-serif italic">“{invitation.message}”</p>}
+          </div>
+        ) : (
+          <p className="text-sm text-ink/65">{invitation.maxGuests} cupos{invitation.link ? ' · aún no responde' : ''}</p>
+        ))}
+        <Field label="Nombre de la familia">
+          <input className="input" value={values.familyName} onChange={(e) => set('familyName', e.target.value)} required />
+        </Field>
+        <Field label="Teléfono (WhatsApp)" hint="Con código de país si no es de Bolivia, p. ej. +54 9 11 1234 5678">
+          <input className="input" inputMode="tel" value={values.contactPhone} onChange={(e) => set('contactPhone', e.target.value)} placeholder="70000000" autoFocus />
+        </Field>
+        <Field label="Email">
+          <input className="input" type="email" value={values.contactEmail} onChange={(e) => set('contactEmail', e.target.value)} />
+        </Field>
+        {error && <p className="rounded-xl bg-red-50 px-4 py-3 text-sm text-red-700">{error}</p>}
+        <button type="submit" className="btn-primary" disabled={saving}>{saving ? 'Guardando…' : 'Guardar'}</button>
+      </form>
+    </Modal>
   );
 }
 

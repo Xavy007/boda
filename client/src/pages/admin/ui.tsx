@@ -1,8 +1,12 @@
 import { AnimatePresence, motion } from 'framer-motion';
 import { createContext, useCallback, useContext, useEffect, useState, type ReactNode } from 'react';
+import { useOutletContext } from 'react-router-dom';
 import { IconClose } from '@/components/Icons';
 import { useLockBodyScroll } from '@/hooks/useMediaQuery';
-import { STATUS_META, type DisplayStatus } from './types';
+import { STATUS_META, type AdminMe, type DisplayStatus } from './types';
+
+/** Usuario del panel (administrador, wedding planner o novios), lo provee AdminLayout */
+export const useAdminMe = () => useOutletContext<AdminMe>();
 
 export function StatusBadge({ status }: { status: DisplayStatus | 'BLOQUEADO' }) {
   const meta = STATUS_META[status];

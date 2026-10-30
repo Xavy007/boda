@@ -129,11 +129,20 @@ model EventSettings {
   updatedAt DateTime @updatedAt
 }
 
+/// ADMIN: administrador (todo el panel) · PLANNER: wedding planner (confirmaciones, enviar links y reporte)
+/// NOVIOS: solo cargan familias, teléfonos y datos de contacto
+enum AdminRole {
+  ADMIN
+  PLANNER
+  NOVIOS
+}
+
 model AdminUser {
-  id           String   @id @default(cuid())
-  email        String   @unique
+  id           String    @id @default(cuid())
+  email        String    @unique
   passwordHash String
-  createdAt    DateTime @default(now())
+  role         AdminRole @default(ADMIN)
+  createdAt    DateTime  @default(now())
 }
 
 /// Fotos de la invitación. Los archivos (WebP) viven en Supabase Storage (bucket `fotos`);
