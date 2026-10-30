@@ -1,6 +1,6 @@
 // Prisma + Supabase (PostgreSQL)
 // La base guarda solo invitaciones, invitados, dispositivos, accesos y la configuración.
-// Las fotos viven en el proyecto (client/public/fotos), ver `npm run fotos`.
+// Las fotos viven en Supabase Storage (bucket `fotos`); la tabla Photo guarda su orden y descripción.
 // - DATABASE_URL: pooler (6543, pgbouncer=true) para las consultas de la app
 // - DIRECT_URL:   conexión directa (5432) para las migraciones
 
@@ -134,4 +134,21 @@ model AdminUser {
   email        String   @unique
   passwordHash String
   createdAt    DateTime @default(now())
+}
+
+/// Fotos de la invitación. Los archivos (WebP) viven en Supabase Storage (bucket `fotos`);
+/// aquí solo se guarda la sección, el orden, la descripción y las URLs.
+model Photo {
+  id          String   @id
+  section     String
+  order       Int      @default(0)
+  alt         String   @default("")
+  width       Int
+  height      Int
+  blurDataUrl String?
+  /// [{ width, url, path }]
+  variants    Json
+  createdAt   DateTime @default(now())
+
+  @@index([section, order])
 }

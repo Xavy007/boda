@@ -1,13 +1,15 @@
 /**
- * Fotos de la invitación guardadas en el DISCO del servidor (no en la base de datos):
- *   MEDIA_DIR/fotos/<id>-<ancho>.webp   → archivos optimizados (480/960/1600 px)
- *   MEDIA_DIR/photos.json               → lista de fotos: sección, orden, descripción, tamaños
+ * Fotos de la invitación:
+ *   Supabase Storage, bucket `fotos` → <id>-<ancho>.webp (480/960/1600 px), servidas por su CDN
+ *   Tabla Photo (Postgres)           → sección, orden, descripción y URLs de cada foto
+ * Así no se pierden aunque el disco del servidor se borre (plan gratis de Render).
  */
-import { mkdir, readFile, rename, rm, writeFile } from 'node:fs/promises';
 import path from 'node:path';
+import type { Photo } from '@prisma/client';
 import { nanoid } from 'nanoid';
 import sharp from 'sharp';
-import { MEDIA_DIR, PHOTOS_DIR, PHOTOS_MANIFEST } from '../config/paths.js';
+import { prisma } from '../lib/prisma.js';
+import { publicUrl, removeObjects, uploadObject } from '../lib/storage.js';
 import { HttpError } from '../utils/http.js';
 
 export const SECTIONS = ['HERO', 'HISTORIA', 'GALERIA', 'CIERRE'] as const;
@@ -19,58 +21,11 @@ const WEBP_QUALITY = 78;
 interface Variant {
   width: number;
   url: string;
-  file?: string;
+  /** Ruta dentro del bucket */
+  path: string;
 }
 
-export interface StoredPhoto {
-  id: string;
-  section: PhotoSection;
-  order: number;
-  alt: string;
-  width: number;
-  height: number;
-  blurDataUrl: string | null;
-  variants: Variant[];
-  createdAt: string;
-}
-
-type Manifest = Record<PhotoSection, StoredPhoto[]>;
-
-const emptyManifest = (): Manifest => ({ HERO: [], HISTORIA: [], GALERIA: [], CIERRE: [] });
-
-// ── Lectura / escritura del índice ───────────────────────────────────────────
-async function readManifest(): Promise<Manifest> {
-  try {
-    const raw = JSON.parse(await readFile(PHOTOS_MANIFEST, 'utf8')) as Partial<Manifest>;
-    const m = emptyManifest();
-    for (const s of SECTIONS) m[s] = (raw[s] ?? []).sort((a, b) => a.order - b.order);
-    return m;
-  } catch (err) {
-    if ((err as NodeJS.ErrnoException).code === 'ENOENT') return emptyManifest();
-    throw err;
-  }
-}
-
-async function writeManifest(m: Manifest) {
-  await mkdir(MEDIA_DIR, { recursive: true });
-  for (const s of SECTIONS) m[s].forEach((p, i) => ((p.order = i), (p.section = s)));
-  const tmp = `${PHOTOS_MANIFEST}.tmp`;
-  await writeFile(tmp, JSON.stringify(m, null, 2));
-  await rename(tmp, PHOTOS_MANIFEST); // escritura atómica
-}
-
-// Serializa las modificaciones del índice (evita que dos subidas simultáneas se pisen)
-let queue: Promise<unknown> = Promise.resolve();
-function withManifest<T>(fn: (m: Manifest) => Promise<T> | T): Promise<T> {
-  const run = queue.then(async () => {
-    const m = await readManifest();
-    const result = await fn(m);
-    await writeManifest(m);
-    return result;
-  });
-  queue = run.catch(() => undefined);
-  return run;
-}
+const variantsOf = (p: Photo) => p.variants as unknown as Variant[];
 
 // ── Operaciones ─────────────────────────────────────────────────────────────
 /** "03-nuestra-primera-cita.jpg" → "Nuestra primera cita"; nombres de cámara/WhatsApp → "" */
@@ -84,7 +39,7 @@ function altFromFilename(filename: string): string {
   return text.charAt(0).toUpperCase() + text.slice(1);
 }
 
-export async function uploadPhoto(buffer: Buffer, section: PhotoSection, originalName: string): Promise<StoredPhoto> {
+export async function uploadPhoto(buffer: Buffer, section: PhotoSection, originalName: string) {
   let normalized: Buffer;
   try {
     // Corrige la orientación EXIF y elimina metadatos (GPS, cámara…)
@@ -95,119 +50,111 @@ export async function uploadPhoto(buffer: Buffer, section: PhotoSection, origina
   const meta = await sharp(normalized).metadata();
   if (!meta.width || !meta.height) throw new HttpError(400, 'INVALID_IMAGE', `No se pudo leer "${originalName}"`);
 
-  await mkdir(PHOTOS_DIR, { recursive: true });
   const id = nanoid(12);
   const widths = [...new Set(WIDTHS.map((w) => Math.min(w, meta.width!)))];
   const variants: Variant[] = [];
   let height = meta.height;
 
-  for (const w of widths) {
-    const file = `${id}-${w}.webp`;
-    const info = await sharp(normalized)
-      .resize({ width: w, withoutEnlargement: true })
-      .webp({ quality: WEBP_QUALITY })
-      .toFile(path.join(PHOTOS_DIR, file));
-    variants.push({ width: info.width, url: `/fotos/${file}`, file });
-    height = info.height;
-  }
-  const blur = await sharp(normalized).resize({ width: 16 }).webp({ quality: 30 }).toBuffer();
-  const largest = variants[variants.length - 1];
-
-  const photo: StoredPhoto = {
-    id,
-    section,
-    order: 0,
-    alt: altFromFilename(originalName),
-    width: largest.width,
-    height,
-    blurDataUrl: `data:image/webp;base64,${blur.toString('base64')}`,
-    variants,
-    createdAt: new Date().toISOString(),
-  };
-
   try {
-    return await withManifest((m) => {
-      m[section].push(photo);
-      return photo;
+    for (const w of widths) {
+      const { data, info } = await sharp(normalized)
+        .resize({ width: w, withoutEnlargement: true })
+        .webp({ quality: WEBP_QUALITY })
+        .toBuffer({ resolveWithObject: true });
+      const objectPath = `${id}-${info.width}.webp`;
+      await uploadObject(objectPath, data, 'image/webp');
+      variants.push({ width: info.width, url: publicUrl(objectPath), path: objectPath });
+      height = info.height;
+    }
+    const blur = await sharp(normalized).resize({ width: 16 }).webp({ quality: 30 }).toBuffer();
+    const largest = variants[variants.length - 1];
+
+    return await prisma.photo.create({
+      data: {
+        id,
+        section,
+        order: await prisma.photo.count({ where: { section } }),
+        alt: altFromFilename(originalName),
+        width: largest.width,
+        height,
+        blurDataUrl: `data:image/webp;base64,${blur.toString('base64')}`,
+        variants: variants as object[],
+      },
     });
   } catch (err) {
-    await removeFiles(photo);
+    await removeObjects(variants.map((v) => v.path)).catch(() => undefined);
     throw err;
   }
 }
 
-async function removeFiles(photo: StoredPhoto) {
-  await Promise.all(
-    photo.variants.filter((v) => v.file).map((v) => rm(path.join(PHOTOS_DIR, v.file!), { force: true })),
-  );
+async function findPhoto(id: string) {
+  const photo = await prisma.photo.findUnique({ where: { id } });
+  if (!photo) throw new HttpError(404, 'NOT_FOUND', 'Foto no encontrada');
+  return photo;
 }
 
 export async function deletePhoto(id: string) {
-  const removed = await withManifest((m) => {
-    for (const s of SECTIONS) {
-      const idx = m[s].findIndex((p) => p.id === id);
-      if (idx >= 0) return m[s].splice(idx, 1)[0];
-    }
-    throw new HttpError(404, 'NOT_FOUND', 'Foto no encontrada');
-  });
-  await removeFiles(removed);
+  const photo = await findPhoto(id);
+  await removeObjects(variantsOf(photo).map((v) => v.path));
+  await prisma.photo.delete({ where: { id } });
 }
 
-export function updatePhoto(id: string, data: { alt?: string; section?: PhotoSection }) {
-  return withManifest((m) => {
-    for (const s of SECTIONS) {
-      const idx = m[s].findIndex((p) => p.id === id);
-      if (idx < 0) continue;
-      const photo = m[s][idx];
-      if (data.alt !== undefined) photo.alt = data.alt;
-      if (data.section && data.section !== s) {
-        m[s].splice(idx, 1);
-        m[data.section].push(photo);
-      }
-      return photo;
-    }
-    throw new HttpError(404, 'NOT_FOUND', 'Foto no encontrada');
+export async function updatePhoto(id: string, data: { alt?: string; section?: PhotoSection }) {
+  const photo = await findPhoto(id);
+  const moving = data.section && data.section !== photo.section;
+  const updated = await prisma.photo.update({
+    where: { id },
+    data: {
+      alt: data.alt,
+      // Al cambiar de sección pasa al final de la nueva
+      ...(moving && { section: data.section, order: await prisma.photo.count({ where: { section: data.section } }) }),
+    },
   });
+  return toPublic(updated);
 }
 
-export function reorderPhotos(items: { id: string; section: PhotoSection; order: number }[]) {
-  return withManifest((m) => {
-    const all = new Map(SECTIONS.flatMap((s) => m[s]).map((p) => [p.id, p]));
-    for (const item of items) {
-      const p = all.get(item.id);
-      if (p) Object.assign(p, { section: item.section, order: item.order });
-    }
-    for (const s of SECTIONS) m[s] = [];
-    for (const p of [...all.values()].sort((a, b) => a.order - b.order)) m[p.section].push(p);
-  });
+export async function reorderPhotos(items: { id: string; section: PhotoSection; order: number }[]) {
+  await prisma.$transaction(
+    items.map((item) =>
+      prisma.photo.updateMany({ where: { id: item.id }, data: { section: item.section, order: item.order } }),
+    ),
+  );
 }
 
 // ── Vistas ──────────────────────────────────────────────────────────────────
-function toPublic(p: StoredPhoto) {
+function toPublic(p: Photo) {
+  const variants = variantsOf(p);
   return {
     id: p.id,
-    publicUrl: p.variants[p.variants.length - 1]?.url ?? '',
-    section: p.section,
+    publicUrl: variants[variants.length - 1]?.url ?? '',
+    section: p.section as PhotoSection,
     order: p.order,
     alt: p.alt,
     width: p.width,
     height: p.height,
     blurDataUrl: p.blurDataUrl,
-    variants: p.variants.map(({ width, url }) => ({ width, url })),
+    variants: variants.map(({ width, url }) => ({ width, url })),
   };
 }
 
+async function photosBySection() {
+  const all = await prisma.photo.findMany({ orderBy: [{ order: 'asc' }, { createdAt: 'asc' }] });
+  return Object.fromEntries(SECTIONS.map((s) => [s, all.filter((p) => p.section === s).map(toPublic)])) as Record<
+    PhotoSection,
+    ReturnType<typeof toPublic>[]
+  >;
+}
+
 /** Para el panel: solo las fotos subidas. */
-export async function listUploadedPhotos() {
-  const m = await readManifest();
-  return Object.fromEntries(SECTIONS.map((s) => [s, m[s].map(toPublic)]));
+export function listUploadedPhotos() {
+  return photosBySection();
 }
 
 /** Para la invitación: las secciones vacías se completan con fotos de ejemplo. */
 export async function listPhotosForInvitation() {
-  const m = await readManifest();
+  const m = await photosBySection();
   return Object.fromEntries(
-    SECTIONS.map((s) => [s, m[s].length ? m[s].map(toPublic) : PLACEHOLDERS[s].map((p, i) => placeholder(s, i, ...p))]),
+    SECTIONS.map((s) => [s, m[s].length ? m[s] : PLACEHOLDERS[s].map((p, i) => placeholder(s, i, ...p))]),
   );
 }
 

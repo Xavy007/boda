@@ -9,6 +9,13 @@ const schema = z.object({
   JWT_SECRET: z.string().min(32, 'JWT_SECRET debe tener al menos 32 caracteres'),
   COOKIE_SECRET: z.string().min(32, 'COOKIE_SECRET debe tener al menos 32 caracteres'),
   CLIENT_URL: z.string().url().transform((url) => url.replace(/\/+$/, '')),
+  // Fotos en Supabase Storage (Project Settings → API Keys → Secret key)
+  SUPABASE_URL: z
+    .string()
+    .url()
+    .transform((url) => url.replace(/\/+$/, ''))
+    .optional(),
+  SUPABASE_SECRET_KEY: z.string().min(1).optional(),
 });
 
 const parsed = schema.safeParse(process.env);
