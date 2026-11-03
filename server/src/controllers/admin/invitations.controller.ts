@@ -23,6 +23,12 @@ export function forcedSide(role: AdminRole | undefined): GuestSide | undefined {
   return role === 'NOVIA' || role === 'NOVIO' ? role : undefined;
 }
 
+/** Invitaciones que puede ver cada rol: la novia y el novio, las de su lado y las de los dos */
+function visibleTo(role: AdminRole | undefined) {
+  const side = forcedSide(role);
+  return side ? { side: { in: [side, 'AMBOS' as const] } } : {};
+}
+
 function fillTemplate(template: string, inv: { familyName: string; maxGuests: number; token: string }) {
   return template
     .replaceAll('{nombre_familia}', cleanFamilyName(inv.familyName))
@@ -35,6 +41,7 @@ export async function listInvitations(req: Request, res: Response) {
   const canSend = !forcedSide(req.adminRole);
   const [invitations, blocked, settings] = await Promise.all([
     prisma.invitation.findMany({
+      where: visibleTo(req.adminRole),
       orderBy: { createdAt: 'desc' },
       include: { _count: { select: { devices: true } } },
     }),
@@ -114,8 +121,10 @@ export async function updateInvitation(req: Request, res: Response) {
 export async function updateContact(req: Request, res: Response) {
   const data = invitationContactSchema.parse(req.body);
   if (forcedSide(req.adminRole)) delete data.side;
+  const own = await prisma.invitation.findFirst({ where: { id: String(req.params.id), ...visibleTo(req.adminRole) }, select: { id: true } });
+  if (!own) throw new HttpError(404, 'NOT_FOUND', 'Invitación no encontrada');
   const inv = await prisma.invitation.update({
-    where: { id: String(req.params.id) },
+    where: { id: own.id },
     data,
     select: { familyName: true, isPerson: true, side: true, contactPhone: true, contactEmail: true },
   });

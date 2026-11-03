@@ -186,14 +186,14 @@ Panel → **Equipo** → email, contraseña y rol → *Crear cuenta*. Todos entr
 | Cambiar cupos o dispositivos, borrar, regenerar links | ✓ | — | — |
 | Fotos, configuración del evento, equipo, accesos y bloqueos | ✓ | — | — |
 
-Lo que carga la novia queda como invitado de la novia, y lo del novio, del novio: así el reporte cuenta cuántos invitados tiene cada uno. La novia y el novio no reciben los links privados ni las respuestas (el servidor no se los envía). *Nueva contraseña* genera una clave nueva, cierra sus sesiones y abre tu correo con el mensaje listo para enviársela. Los permisos se validan en el servidor (403), y *Quitar acceso* cierra la sesión al instante.
+Lo que carga la novia queda como invitado de la novia, y lo del novio, del novio: así el reporte cuenta cuántos invitados tiene cada uno. Cada uno ve y edita **solo sus invitados** (y los marcados *de los dos*); el administrador y la planner ven todos y eligen el lado. Al crear una invitación, *Elegir de mis contactos* llena nombre y teléfono desde la agenda del celular (Chrome en Android); en iPhone se sube el contacto compartido como `.vcf`. La novia y el novio no reciben los links privados ni las respuestas (el servidor no se los envía). *Nueva contraseña* genera una clave nueva, cierra sus sesiones y abre tu correo con el mensaje listo para enviársela. Los permisos se validan en el servidor (403), y *Quitar acceso* cierra la sesión al instante.
 
 ### Importar invitados
 
 Archivo `.csv` (coma o punto y coma) o `.xlsx` con las columnas:
 
 ```
-nombre_familia,telefono,email,cupos,lado
+nombre_familia,telefono,cupos,lado
 ```
 
 `lado` es opcional: `novia`, `novio` o `ambos`. Si importa la novia o el novio, se ignora y queda del suyo.

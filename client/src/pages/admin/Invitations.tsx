@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useState, type FormEvent } from 'react';
 import { IconCopy, IconWhatsapp } from '@/components/Icons';
 import { api, ApiError, downloadFile } from '@/lib/api';
+import { canPickContacts, isMobileDevice, parseVcard, pickContact, type PickedContact } from '@/lib/contacts';
 import { copyText } from '@/lib/format';
 import { fmtDateTime, type AdminInvitation, type DisplayStatus, type InvitationDetail, SIDE_LABELS, isCouple, type GuestSide } from './types';
 import { EmptyState, Field, Modal, PageHeader, StatusBadge, useAdminMe, useToast } from './ui';
@@ -112,7 +113,7 @@ export default function Invitations() {
       <input
         type="search"
         className="input"
-        placeholder="Buscar por nombre de familia…"
+        placeholder="Buscar por nombre…"
         value={query}
         onChange={(e) => setQuery(e.target.value)}
         aria-label="Buscar invitación"
@@ -200,6 +201,10 @@ export default function Invitations() {
             toast('Invitación creada');
             load();
           }}
+          onSavedAnother={() => {
+            toast('Invitación creada');
+            load();
+          }}
         />
       </Modal>
       <ImportModal open={importing} onClose={() => setImporting(false)} onDone={load} />
@@ -257,35 +262,73 @@ interface FormValues {
   isPerson: boolean;
   side: GuestSide | null;
   contactPhone: string;
-  contactEmail: string;
   maxGuests: number;
   maxDevices: number;
   notes: string;
 }
 
-function InvitationForm({ initial, id, onSaved, showDevices = true }: { initial?: Partial<FormValues>; id?: string; onSaved: () => void; showDevices?: boolean }) {
-  const [values, setValues] = useState<FormValues>({
+/** Botón para llenar nombre y teléfono desde la agenda del celular (o un .vcf en iPhone) */
+function ContactImport({ onPick }: { onPick: (c: PickedContact) => void }) {
+  const toast = useToast();
+  const fromPicker = async () => {
+    try {
+      const c = await pickContact();
+      if (c) onPick(c);
+    } catch {
+      toast('No se pudo abrir tus contactos', 'error');
+    }
+  };
+  const fromFile = async (file?: File) => {
+    if (!file) return;
+    const c = parseVcard(await file.text());
+    if (c) onPick(c);
+    else toast('El archivo no tiene un contacto válido', 'error');
+  };
+  return (
+    <div className="grid gap-1.5">
+      {canPickContacts ? (
+        <button type="button" className="btn-outline w-full" onClick={fromPicker}>📱 Elegir de mis contactos</button>
+      ) : (
+        <label className="btn-outline w-full cursor-pointer">
+          📱 Subir contacto (.vcf)
+          <input type="file" accept=".vcf,text/vcard,text/x-vcard" className="sr-only" onChange={(e) => fromFile(e.target.files?.[0]).finally(() => (e.target.value = ''))} />
+        </label>
+      )}
+      {!canPickContacts && (
+        <p className="text-center text-xs text-ink/45">En iPhone: Contactos → elige a la persona → Compartir contacto → Guardar en Archivos, y súbelo aquí.</p>
+      )}
+    </div>
+  );
+}
+
+function InvitationForm({ initial, id, onSaved, onSavedAnother, showDevices = true }: { initial?: Partial<FormValues>; id?: string; onSaved: () => void; onSavedAnother?: () => void; showDevices?: boolean }) {
+  const blank: FormValues = {
     familyName: '',
     isPerson: false,
     side: null,
     contactPhone: '',
-    contactEmail: '',
     maxGuests: 2,
     maxDevices: 2,
     notes: '',
     ...initial,
-  });
+  };
+  const [values, setValues] = useState<FormValues>(blank);
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const set = <K extends keyof FormValues>(k: K, v: FormValues[K]) => setValues((p) => ({ ...p, [k]: v }));
 
-  const submit = async (e: FormEvent) => {
+  const submit = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
+    // "Guardar y agregar otro" deja el formulario abierto y vacío para cargar seguido
+    const another = (e.nativeEvent as SubmitEvent).submitter?.getAttribute('value') === 'another';
     setSaving(true);
     setError(null);
     try {
       await api(id ? `/api/admin/invitations/${id}` : '/api/admin/invitations', { method: id ? 'PUT' : 'POST', body: values });
-      onSaved();
+      if (another && onSavedAnother) {
+        setValues({ ...blank, isPerson: values.isPerson, side: values.side });
+        onSavedAnother();
+      } else onSaved();
     } catch (err) {
       setError(err instanceof ApiError ? err.message : 'Error al guardar');
     } finally {
@@ -295,18 +338,15 @@ function InvitationForm({ initial, id, onSaved, showDevices = true }: { initial?
 
   return (
     <form onSubmit={submit} className="grid gap-4">
+      {!id && isMobileDevice && <ContactImport onPick={(c) => setValues((p) => ({ ...p, familyName: c.name || p.familyName, contactPhone: c.phone || p.contactPhone, isPerson: true }))} />}
+      <Field label="Teléfono (WhatsApp)" hint="8 dígitos si es de Bolivia; con código de país si es de afuera (+54 9 11…)">
+        <input className="input" type="tel" inputMode="tel" value={values.contactPhone} onChange={(e) => set('contactPhone', e.target.value)} placeholder="70000000" autoFocus={!id && !isMobileDevice} />
+      </Field>
       <InviteeKind isPerson={values.isPerson} onChange={(v) => set('isPerson', v)} />
-      <SidePicker value={values.side} onChange={(v) => set('side', v)} />
-      <Field label={values.isPerson ? 'Nombre de la persona' : 'Nombre de la familia'} hint={inviteeHint(values.isPerson, values.maxGuests)}>
-        <input className="input" value={values.familyName} onChange={(e) => set('familyName', e.target.value)} required />
+      <Field label={values.isPerson ? 'Nombre completo' : 'Apellido de la familia'} hint={inviteeHint(values.isPerson, values.maxGuests)}>
+        <input className="input" value={values.familyName} onChange={(e) => set('familyName', e.target.value)} placeholder={values.isPerson ? 'Juan Pérez López' : 'Pérez López'} autoComplete="off" required />
       </Field>
       <div className="grid grid-cols-2 gap-3">
-        <Field label="Teléfono (WhatsApp)">
-          <input className="input" inputMode="tel" value={values.contactPhone} onChange={(e) => set('contactPhone', e.target.value)} placeholder="70000000" />
-        </Field>
-        <Field label="Email">
-          <input className="input" type="email" value={values.contactEmail} onChange={(e) => set('contactEmail', e.target.value)} />
-        </Field>
         <Field label="Cupos">
           <input className="input" type="number" min={1} max={30} value={values.maxGuests} onChange={(e) => set('maxGuests', Number(e.target.value))} />
         </Field>
@@ -316,18 +356,27 @@ function InvitationForm({ initial, id, onSaved, showDevices = true }: { initial?
           </Field>
         )}
       </div>
-      <Field label="Notas internas">
-        <textarea className="input min-h-[80px] py-3" value={values.notes} onChange={(e) => set('notes', e.target.value)} />
-      </Field>
+      <SidePicker value={values.side} onChange={(v) => set('side', v)} />
+      <details className="rounded-2xl bg-ivory px-4 py-2" open={Boolean(values.notes)}>
+        <summary className="min-h-[40px] cursor-pointer py-2 text-sm font-medium text-ink/60">Notas internas (opcional)</summary>
+        <div className="pb-2">
+          <textarea className="input min-h-[80px] py-3" value={values.notes} onChange={(e) => set('notes', e.target.value)} aria-label="Notas internas" />
+        </div>
+      </details>
       {error && <p className="rounded-xl bg-red-50 px-4 py-3 text-sm text-red-700">{error}</p>}
-      <button type="submit" className="btn-primary" disabled={saving}>{saving ? 'Guardando…' : 'Guardar'}</button>
+      <div className={onSavedAnother ? 'grid gap-2 sm:grid-cols-2' : 'grid'}>
+        <button type="submit" className="btn-primary" disabled={saving}>{saving ? 'Guardando…' : 'Guardar'}</button>
+        {onSavedAnother && (
+          <button type="submit" value="another" className="btn-outline" disabled={saving}>Guardar y agregar otro</button>
+        )}
+      </div>
     </form>
   );
 }
 
 // ── Datos de contacto y respuesta (planner y novios) ─────────────────────────
 function ContactModal({ invitation, onClose, onSaved }: { invitation: AdminInvitation | null; onClose: () => void; onSaved: () => void }) {
-  const [values, setValues] = useState<{ familyName: string; isPerson: boolean; side: GuestSide | null; contactPhone: string; contactEmail: string }>({ familyName: '', isPerson: false, side: null, contactPhone: '', contactEmail: '' });
+  const [values, setValues] = useState<{ familyName: string; isPerson: boolean; side: GuestSide | null; contactPhone: string }>({ familyName: '', isPerson: false, side: null, contactPhone: '' });
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const set = <K extends keyof typeof values>(k: K, v: (typeof values)[K]) => setValues((p) => ({ ...p, [k]: v }));
@@ -338,7 +387,6 @@ function ContactModal({ invitation, onClose, onSaved }: { invitation: AdminInvit
       isPerson: invitation?.isPerson ?? false,
       side: invitation?.side ?? null,
       contactPhone: invitation?.contactPhone ?? '',
-      contactEmail: invitation?.contactEmail ?? '',
     });
     setError(null);
   }, [invitation]);
@@ -382,9 +430,6 @@ function ContactModal({ invitation, onClose, onSaved }: { invitation: AdminInvit
         </Field>
         <Field label="Teléfono (WhatsApp)" hint="Con código de país si no es de Bolivia, p. ej. +54 9 11 1234 5678">
           <input className="input" inputMode="tel" value={values.contactPhone} onChange={(e) => set('contactPhone', e.target.value)} placeholder="70000000" autoFocus />
-        </Field>
-        <Field label="Email">
-          <input className="input" type="email" value={values.contactEmail} onChange={(e) => set('contactEmail', e.target.value)} />
         </Field>
         {error && <p className="rounded-xl bg-red-50 px-4 py-3 text-sm text-red-700">{error}</p>}
         <button type="submit" className="btn-primary" disabled={saving}>{saving ? 'Guardando…' : 'Guardar'}</button>
@@ -522,7 +567,6 @@ function DetailModal({ id, onClose, onChanged }: { id: string | null; onClose: (
             isPerson: detail.isPerson,
             side: detail.side,
             contactPhone: detail.contactPhone ?? '',
-            contactEmail: detail.contactEmail ?? '',
             maxGuests: detail.maxGuests,
             maxDevices: detail.maxDevices,
             notes: detail.notes ?? '',
@@ -540,7 +584,7 @@ function DetailModal({ id, onClose, onChanged }: { id: string | null; onClose: (
 }
 
 // ── Importar ─────────────────────────────────────────────────────────────────
-const TEMPLATE_CSV = 'nombre_familia,telefono,email,cupos\nPérez Gutiérrez,70011111,perez@ejemplo.com,4\nMamani Quispe,70022222,,3\n';
+const TEMPLATE_CSV = 'nombre_familia,telefono,cupos,lado\nPérez Gutiérrez,70011111,4,novia\nMamani Quispe,70022222,3,novio\n';
 
 function ImportModal({ open, onClose, onDone }: { open: boolean; onClose: () => void; onDone: () => void }) {
   const [file, setFile] = useState<File | null>(null);
@@ -582,7 +626,7 @@ function ImportModal({ open, onClose, onDone }: { open: boolean; onClose: () => 
   return (
     <Modal open={open} onClose={close} title="Importar invitados">
       <p className="text-sm text-ink/65">
-        Sube un archivo <b>.csv</b> o <b>.xlsx</b> con las columnas <code className="rounded bg-ink/5 px-1">nombre_familia, telefono, email, cupos</code>. Se genera un link único por fila.
+        Sube un archivo <b>.csv</b> o <b>.xlsx</b> con las columnas <code className="rounded bg-ink/5 px-1">nombre_familia, telefono, cupos, lado</code>. Se genera un link único por fila.
       </p>
       <button type="button" onClick={downloadTemplate} className="mt-2 min-h-[44px] text-sm font-medium text-sage underline underline-offset-4">
         Descargar plantilla CSV
