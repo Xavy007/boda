@@ -15,7 +15,7 @@ import {
 import { editPhoto, listPhotos, removePhoto, sortPhotos, uploadPhotos } from '../controllers/admin/photos.controller.js';
 import { exportExcel, getLogs, getStats } from '../controllers/admin/reports.controller.js';
 import { getAdminSettings, getItinerary, updateAdminSettings, updateItinerary } from '../controllers/admin/settings.controller.js';
-import { createTeamMember, deleteTeamMember, listTeam } from '../controllers/admin/team.controller.js';
+import { createTeamMember, deleteTeamMember, listTeam, resetTeamPassword } from '../controllers/admin/team.controller.js';
 import { adminLimiter, loginLimiter } from '../middlewares/rateLimits.js';
 import { requireAdmin, requireRole } from '../middlewares/requireAdmin.js';
 import { uploadImages, uploadSpreadsheet } from '../middlewares/upload.js';
@@ -69,3 +69,4 @@ adminRouter.put('/settings', updateAdminSettings);
 adminRouter.get('/team', listTeam);
 adminRouter.post('/team', createTeamMember);
 adminRouter.delete('/team/:id', deleteTeamMember);
+adminRouter.post('/team/:id/reset-password', resetTeamPassword);

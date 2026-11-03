@@ -144,6 +144,8 @@ model AdminUser {
   passwordHash String
   role         AdminRole @default(ADMIN)
   createdAt    DateTime  @default(now())
+  /// Las sesiones iniciadas antes de esta fecha dejan de valer
+  passwordChangedAt DateTime?
 }
 
 /// Fotos de la invitación. Los archivos (WebP) viven en Supabase Storage (bucket `fotos`);

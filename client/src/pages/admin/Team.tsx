@@ -3,10 +3,19 @@ import { api, ApiError } from '@/lib/api';
 import { fmtDateTime, ROLE_LABELS, type TeamMember } from './types';
 import { Field, PageHeader, useToast } from './ui';
 
+/** Abre el correo del administrador con el mensaje listo para enviar */
+function passwordMailto(email: string, password: string) {
+  const subject = 'Tu nueva contraseña del panel de la boda';
+  const body = `Hola:\n\nTe asigné una contraseña nueva para el panel de la boda.\n\nEmail: ${email}\nContraseña: ${password}\n\nEntra en ${window.location.origin}/admin/login`;
+  return `mailto:${encodeURIComponent(email)}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+}
+
 /** Cuentas del equipo: wedding planner y novios (que solo cargan los datos). */
 export default function Team() {
   const toast = useToast();
   const [team, setTeam] = useState<TeamMember[] | null>(null);
+  // Contraseña recién asignada: se muestra una sola vez para enviarla
+  const [shownPassword, setShownPassword] = useState<{ email: string; password: string } | null>(null);
   const [email, setEmail] = useState('');
   const [role, setRole] = useState<TeamMember['role']>('PLANNER');
   const [password, setPassword] = useState('');
@@ -49,6 +58,16 @@ export default function Team() {
     }
   };
 
+  const resetPassword = async (p: TeamMember) => {
+    if (!confirm(`¿Asignar una contraseña nueva a ${p.email}? La anterior dejará de funcionar y se cerrarán sus sesiones abiertas.`)) return;
+    try {
+      const r = await api<{ password: string }>(`/api/admin/team/${p.id}/reset-password`, { method: 'POST' });
+      setShownPassword({ email: p.email, password: r.password });
+    } catch {
+      toast('No se pudo asignar la contraseña', 'error');
+    }
+  };
+
   return (
     <>
       <PageHeader title="Equipo" subtitle="Cuentas para la wedding planner y los novios" />
@@ -66,14 +85,29 @@ export default function Team() {
                 <span className="font-medium">{p.email}</span>
                 <span className="ml-2 rounded-full bg-ink/5 px-2.5 py-1 text-[11px] font-semibold">{ROLE_LABELS[p.role]}</span>
               </span>
-              <span className="flex items-center gap-3 text-xs text-ink/50">
+              <span className="flex flex-wrap items-center gap-x-3 text-xs text-ink/50">
                 desde {fmtDateTime(p.createdAt)}
-                <button type="button" className="min-h-[44px] font-medium text-red-600" onClick={() => remove(p)}>Quitar acceso</button>
+                <button type="button" className="min-h-[44px] font-medium text-ink/70 hover:text-gold" onClick={() => resetPassword(p)}>Nueva contraseña</button>
+              <button type="button" className="min-h-[44px] font-medium text-red-600" onClick={() => remove(p)}>Quitar acceso</button>
               </span>
             </li>
           ))}
           {team && !team.length && <li className="text-sm text-ink/50">Todavía no hay cuentas.</li>}
         </ul>
+
+        {shownPassword && (
+          <div className="mt-4 rounded-2xl bg-sage/10 p-4 text-sm" role="status">
+            <p>
+              Contraseña nueva de <b>{shownPassword.email}</b>. Envíasela ahora: no se volverá a mostrar.
+            </p>
+            <code className="mt-3 inline-block rounded-lg bg-white px-3 py-2 text-base tracking-wider">{shownPassword.password}</code>
+            <p className="mt-3 flex flex-wrap items-center gap-2">
+              <a className="btn-primary min-h-[44px] px-4" href={passwordMailto(shownPassword.email, shownPassword.password)}>Enviar por correo</a>
+              <button type="button" className="btn-outline min-h-[44px] px-4" onClick={() => navigator.clipboard?.writeText(shownPassword.password).then(() => toast('Copiada'))}>Copiar</button>
+              <button type="button" className="min-h-[44px] px-2 text-ink/50" onClick={() => setShownPassword(null)}>Listo</button>
+            </p>
+          </div>
+        )}
 
         <form onSubmit={create} className="mt-4 grid gap-3 sm:grid-cols-[1fr_1fr_auto_auto] sm:items-end">
           <Field label="Email">
