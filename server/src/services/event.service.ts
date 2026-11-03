@@ -99,7 +99,6 @@ export function toPublicEvent(s: EventSettings) {
     },
     dressCode: s.dressCode,
     dressCodeNote: s.dressCodeNote,
-    dressCodeColors: (s.dressCodeColors as string[] | null) ?? [],
     mainPhrase: s.mainPhrase,
     quotePhrase: s.quotePhrase,
     quoteAuthor: s.quoteAuthor,

@@ -66,7 +66,6 @@ export interface PublicEvent {
   reception: Venue;
   dressCode: string;
   dressCodeNote: string | null;
-  dressCodeColors: string[];
   mainPhrase: string;
   quotePhrase: string | null;
   quoteAuthor: string | null;

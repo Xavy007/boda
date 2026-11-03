@@ -99,7 +99,6 @@ export const settingsSchema = z.object({
   receptionMapsUrl: optionalUrl,
   dressCode: z.string().trim().min(1).max(120),
   dressCodeNote: optionalText(500),
-  dressCodeColors: z.array(hex).max(10).default([]),
   mainPhrase: z.string().trim().min(1).max(300),
   quotePhrase: optionalText(400),
   quoteAuthor: optionalText(120),

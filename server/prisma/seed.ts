@@ -45,7 +45,6 @@ async function main() {
     receptionMapsUrl: 'https://maps.google.com/?q=-16.5698,-68.0889',
     dressCode: 'Formal elegante',
     dressCodeNote: 'Te sugerimos tonos tierra, salvia y neutros. Reservamos el blanco para la novia 🤍',
-    dressCodeColors: ['#9CAF88', '#C9A96E', '#D8C3A5', '#8E8D8A', '#E7DFD3', '#5C6B54'],
     mainPhrase: 'Dos almas, un mismo camino',
     quotePhrase: 'El amor no consiste en mirarse el uno al otro, sino en mirar juntos en la misma dirección.',
     quoteAuthor: 'Antoine de Saint-Exupéry',

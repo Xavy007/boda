@@ -100,8 +100,6 @@ model EventSettings {
 
   dressCode       String
   dressCodeNote   String?
-  /// string[] con colores HEX sugeridos
-  dressCodeColors Json    @default("[]")
 
   mainPhrase    String
   quotePhrase   String?

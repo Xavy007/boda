@@ -107,20 +107,6 @@ export default function Settings() {
         <Group title="Dress code">
           <Field label="Código"><input className="input" {...text('dressCode')} required /></Field>
           <Field label="Nota"><input className="input" {...text('dressCodeNote')} /></Field>
-          <div className="sm:col-span-2">
-            <span className="label">Colores sugeridos</span>
-            <div className="flex flex-wrap items-center gap-2">
-              {s.dressCodeColors.map((c, i) => (
-                <span key={i} className="flex items-center gap-1 rounded-full bg-ivory p-1 pr-2">
-                  <input type="color" value={c} onChange={(e) => set('dressCodeColors', s.dressCodeColors.map((x, idx) => (idx === i ? e.target.value.toUpperCase() : x)))} className="h-9 w-9 cursor-pointer rounded-full border-0 bg-transparent" aria-label={`Color ${i + 1}`} />
-                  <button type="button" onClick={() => set('dressCodeColors', s.dressCodeColors.filter((_, idx) => idx !== i))} className="min-h-[36px] px-1 text-ink/40" aria-label="Quitar color">✕</button>
-                </span>
-              ))}
-              {s.dressCodeColors.length < 10 && (
-                <button type="button" onClick={() => set('dressCodeColors', [...s.dressCodeColors, '#CCCCCC'])} className="btn-outline min-h-[44px] px-4">+ Color</button>
-              )}
-            </div>
-          </div>
         </Group>
 
         <Group title="Mesa de regalos">

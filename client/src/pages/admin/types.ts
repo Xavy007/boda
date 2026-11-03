@@ -117,7 +117,6 @@ export interface AdminSettings {
   receptionMapsUrl: string | null;
   dressCode: string;
   dressCodeNote: string | null;
-  dressCodeColors: string[];
   mainPhrase: string;
   quotePhrase: string | null;
   quoteAuthor: string | null;
