@@ -106,6 +106,9 @@ export default function InvitationPage() {
 
   const { data, photos } = state;
   const { event, invitation } = data;
+  // Se le habla en singular si es una persona (con o sin acompañante) o si tiene un solo cupo
+  const solo = invitation.isPerson || invitation.maxGuests === 1;
+  const companions = invitation.isPerson ? invitation.maxGuests - 1 : 0;
 
   return (
     <>
@@ -114,6 +117,8 @@ export default function InvitationPage() {
           partnerOne={event.partnerOneName}
           partnerTwo={event.partnerTwoName}
           familyName={invitation.familyName}
+          solo={solo}
+          companions={companions}
           dateLabel={shortDate(event.eventDate, event.timezone)}
           onStart={startMusic}
           onFinish={() => setOpened(true)}
@@ -122,7 +127,7 @@ export default function InvitationPage() {
 
       <main aria-hidden={!opened}>
         <Hero event={event} photo={photos.HERO[0]} revealed={opened} />
-        <Greeting familyName={invitation.familyName} event={event} />
+        <Greeting familyName={invitation.familyName} solo={solo} companions={companions} event={event} />
         <Countdown event={event} />
         <Story items={event.storyItems} photos={photos.HISTORIA} />
         <Gallery photos={photos.GALERIA} />

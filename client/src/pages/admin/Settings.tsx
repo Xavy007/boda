@@ -67,6 +67,8 @@ export default function Settings() {
         <Group title="Novios y fecha">
           <Field label="Nombre 1"><input className="input" {...text('partnerOneName')} required /></Field>
           <Field label="Nombre 2"><input className="input" {...text('partnerTwoName')} required /></Field>
+          <Field label={`Padres de ${s.partnerOneName || 'Nombre 1'}`} hint="Opcional. Ej.: Juan Pérez y María López"><input className="input" {...text('partnerOneParents')} /></Field>
+          <Field label={`Padres de ${s.partnerTwoName || 'Nombre 2'}`} hint="Opcional. Ej.: Carlos Rojas y Ana Vargas"><input className="input" {...text('partnerTwoParents')} /></Field>
           <Field label="Fecha y hora de la ceremonia"><input type="datetime-local" className="input" {...text('eventDateLocal')} required /></Field>
           <Field label="Fin del evento (opcional)"><input type="datetime-local" className="input" {...text('eventEndDateLocal')} /></Field>
           <Field label="Zona horaria"><input className="input" {...text('timezone')} /></Field>
@@ -74,6 +76,13 @@ export default function Settings() {
           <Field label="Cupos por defecto por invitación" hint="Máximo de personas que puede confirmar cada familia, al crear o importar invitaciones sin cupos. Cada invitación se puede ajustar aparte.">
             <input type="number" min={1} max={30} className="input" value={s.defaultMaxGuests} onChange={(e) => set('defaultMaxGuests', Number(e.target.value))} required />
           </Field>
+          <label className="flex min-h-[44px] cursor-pointer items-start gap-3 rounded-2xl bg-ivory px-4 py-3 sm:col-span-2">
+            <input type="checkbox" className="mt-0.5 h-5 w-5 shrink-0 accent-sage" checked={s.adultsOnly} onChange={(e) => set('adultsOnly', e.target.checked)} />
+            <span className="text-sm">
+              <span className="font-medium">Celebración solo para adultos</span>
+              <span className="mt-0.5 block text-xs text-ink/50">Muestra una nota discreta junto a los lugares reservados de cada invitación.</span>
+            </span>
+          </label>
         </Group>
 
         <Group title="Ceremonia">

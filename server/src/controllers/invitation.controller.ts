@@ -13,6 +13,7 @@ function view(inv: Invitation, settings: EventSettings) {
   return {
     invitation: {
       familyName: cleanFamilyName(inv.familyName),
+      isPerson: inv.isPerson,
       maxGuests: inv.maxGuests,
       status: inv.status,
       confirmedAt: inv.confirmedAt?.toISOString() ?? null,

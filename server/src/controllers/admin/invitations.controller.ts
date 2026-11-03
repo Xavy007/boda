@@ -49,6 +49,7 @@ export async function listInvitations(req: Request, res: Response) {
         id: inv.id,
         token: canSend ? inv.token : null,
         familyName: inv.familyName,
+        isPerson: inv.isPerson,
         contactPhone: inv.contactPhone,
         contactEmail: inv.contactEmail,
         maxGuests: inv.maxGuests,
@@ -107,7 +108,7 @@ export async function updateContact(req: Request, res: Response) {
   const inv = await prisma.invitation.update({
     where: { id: String(req.params.id) },
     data,
-    select: { familyName: true, contactPhone: true, contactEmail: true },
+    select: { familyName: true, isPerson: true, contactPhone: true, contactEmail: true },
   });
   res.json(inv);
 }

@@ -79,6 +79,9 @@ export function toPublicEvent(s: EventSettings) {
   return {
     partnerOneName: s.partnerOneName,
     partnerTwoName: s.partnerTwoName,
+    partnerOneParents: s.partnerOneParents,
+    partnerTwoParents: s.partnerTwoParents,
+    adultsOnly: s.adultsOnly,
     eventDate: s.eventDate.toISOString(),
     eventEndDate: eventEnd(s).toISOString(),
     timezone: s.timezone,

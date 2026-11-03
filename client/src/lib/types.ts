@@ -57,6 +57,9 @@ export interface ItineraryItem {
 export interface PublicEvent {
   partnerOneName: string;
   partnerTwoName: string;
+  partnerOneParents: string | null;
+  partnerTwoParents: string | null;
+  adultsOnly: boolean;
   eventDate: string;
   eventEndDate: string;
   timezone: string;
@@ -80,6 +83,7 @@ export interface PublicEvent {
 export interface InvitationData {
   invitation: {
     familyName: string;
+    isPerson: boolean;
     maxGuests: number;
     status: InvitationStatus;
     confirmedAt: string | null;

@@ -19,6 +19,12 @@ interface Props {
 }
 
 /** 11 · Confirmación de asistencia */
+function seatsText(seats: number, isPerson: boolean) {
+  if (seats === 1) return 'Hemos reservado 1 lugar para ti';
+  if (!isPerson) return `Hemos reservado ${seats} lugares para ustedes`;
+  return seats === 2 ? 'Hemos reservado 2 lugares: para ti y tu acompañante' : `Hemos reservado ${seats} lugares para ti y tus acompañantes`;
+}
+
 export function Rsvp({ token, data, onUpdate }: Props) {
   const { invitation, rsvp, event, calendar } = data;
   const responded = invitation.status !== 'PENDIENTE';
@@ -27,11 +33,12 @@ export function Rsvp({ token, data, onUpdate }: Props) {
 
   const deadline = formatDate(rsvp.deadline, event.timezone, { day: 'numeric', month: 'long', year: 'numeric' });
   const seats = invitation.maxGuests;
+  const solo = invitation.isPerson || seats === 1;
   const showingAnswer = responded && !editing;
 
   // Una vez respondida, la sección deja de pedir confirmación y muestra la respuesta
   const heading = !showingAnswer
-    ? { eyebrow: 'R.S.V.P.', title: responded ? 'Modificar respuesta' : '¿Nos acompañan?' }
+    ? { eyebrow: 'R.S.V.P.', title: responded ? 'Modificar respuesta' : solo ? '¿Nos acompañas?' : '¿Nos acompañan?' }
     : invitation.status === 'CONFIRMADO'
       ? { eyebrow: 'Asistencia confirmada', title: '¡Nos vemos en la boda!' }
       : { eyebrow: 'Respuesta recibida', title: 'Gracias por avisarnos' };
@@ -42,8 +49,15 @@ export function Rsvp({ token, data, onUpdate }: Props) {
       {!showingAnswer && (
         <Reveal delay={0.1}>
           <p className="mx-auto mt-6 max-w-sm text-center font-serif text-xl text-ink/80 text-balance">
-            {seats === 1 ? 'Hemos reservado 1 lugar para ti' : `Hemos reservado ${seats} lugares para ustedes`}
+            {seatsText(seats, invitation.isPerson)}
           </p>
+          {event.adultsOnly && (
+            <p className="mx-auto mt-2 max-w-xs text-center font-serif text-[15px] italic text-ink/55 text-balance">
+              {solo
+                ? 'Con todo nuestro cariño, te compartimos que la celebración será para los mayores. Gracias por tu comprensión.'
+                : 'Con todo nuestro cariño, les compartimos que la celebración será para los mayores. Gracias por su comprensión.'}
+            </p>
+          )}
           <p className="mt-2 text-center text-sm text-ink/55">
             {rsvp.canEdit ? `Por favor, confirma antes del ${deadline}.` : `La confirmación cerró el ${deadline}.`}
           </p>
@@ -154,6 +168,7 @@ function RsvpForm({
 }) {
   const { invitation } = data;
   const max = invitation.maxGuests;
+  const solo = invitation.isPerson || max === 1;
   const [attending, setAttending] = useState<boolean | null>(
     invitation.status === 'PENDIENTE' ? null : invitation.status === 'CONFIRMADO',
   );
@@ -168,7 +183,7 @@ function RsvpForm({
   const submit = async (e: FormEvent) => {
     e.preventDefault();
     setError(null);
-    if (attending === null) return setError('Cuéntanos si podrán asistir.');
+    if (attending === null) return setError(solo ? 'Cuéntanos si podrás asistir.' : 'Cuéntanos si podrán asistir.');
     if (name.trim().length < 3) return setError('Escribe tu nombre completo.');
     setSending(true);
     try {
@@ -195,11 +210,11 @@ function RsvpForm({
   return (
     <form onSubmit={submit} noValidate>
       <fieldset>
-        <legend className="label mb-3 text-center">¿Podrán asistir?</legend>
+        <legend className="label mb-3 text-center">{solo ? '¿Podrás asistir?' : '¿Podrán asistir?'}</legend>
         <div className="grid gap-3">
           {[
-            { value: true, label: '¡Sí, asistiremos!', icon: '💍' },
-            { value: false, label: 'No podremos asistir', icon: '🤍' },
+            { value: true, label: solo ? '¡Sí, asistiré!' : '¡Sí, asistiremos!', icon: '💍' },
+            { value: false, label: solo ? 'No podré asistir' : 'No podremos asistir', icon: '🤍' },
           ].map((opt) => {
             const selected = attending === opt.value;
             return (

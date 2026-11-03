@@ -37,6 +37,7 @@ export const invitationCreateSchema = z.object({
     .optional()
     .nullable()
     .or(z.literal('').transform(() => null)),
+  isPerson: z.boolean().optional(),
   maxGuests: z.coerce.number().int().min(1).max(30).optional(),
   maxDevices: z.coerce.number().int().min(1).max(10).default(2),
   notes: optionalText(2000),
@@ -50,7 +51,7 @@ export const teamMemberCreateSchema = z.object({
 
 /** Datos de contacto: lo que la planner y los novios pueden corregir */
 export const invitationContactSchema = invitationCreateSchema
-  .pick({ familyName: true, contactPhone: true, contactEmail: true })
+  .pick({ familyName: true, isPerson: true, contactPhone: true, contactEmail: true })
   .partial();
 
 export const invitationUpdateSchema = invitationCreateSchema.partial().extend({
@@ -73,6 +74,9 @@ const optionalUrl = z
 export const settingsSchema = z.object({
   partnerOneName: z.string().trim().min(1).max(60),
   partnerTwoName: z.string().trim().min(1).max(60),
+  partnerOneParents: optionalText(160),
+  partnerTwoParents: optionalText(160),
+  adultsOnly: z.boolean().default(false),
   eventDateLocal: localDateTime,
   eventEndDateLocal: localDateTime.optional().nullable().or(z.literal('').transform(() => null)),
   timezone: z

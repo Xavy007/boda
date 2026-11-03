@@ -24,6 +24,8 @@ model Invitation {
   id             String           @id @default(cuid())
   token          String           @unique
   familyName     String
+  /// Invitación a una persona (no a una familia); si tiene más de 1 cupo, va con acompañante
+  isPerson       Boolean          @default(false)
   contactPhone   String?
   contactEmail   String?
   maxGuests      Int              @default(2)
@@ -81,6 +83,11 @@ model EventSettings {
   id             Int       @id @default(1)
   partnerOneName String
   partnerTwoName String
+  /// Nombres de los padres de cada novio, p. ej. "Juan Pérez y María López"
+  partnerOneParents String?
+  partnerTwoParents String?
+  /// Muestra una nota discreta en el RSVP: celebración solo para adultos
+  adultsOnly Boolean @default(false)
   eventDate      DateTime
   eventEndDate   DateTime?
   timezone       String    @default("America/La_Paz")

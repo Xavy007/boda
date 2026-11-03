@@ -27,6 +27,7 @@ export interface AdminInvitation {
   id: string;
   token: string | null;
   familyName: string;
+  isPerson: boolean;
   contactPhone: string | null;
   contactEmail: string | null;
   maxGuests: number;
@@ -65,6 +66,7 @@ export interface InvitationDetail {
   id: string;
   token: string;
   familyName: string;
+  isPerson: boolean;
   contactPhone: string | null;
   contactEmail: string | null;
   maxGuests: number;
@@ -101,6 +103,9 @@ export interface Stats {
 export interface AdminSettings {
   partnerOneName: string;
   partnerTwoName: string;
+  partnerOneParents: string | null;
+  partnerTwoParents: string | null;
+  adultsOnly: boolean;
   eventDateLocal: string;
   eventEndDateLocal: string;
   timezone: string;
