@@ -14,7 +14,7 @@ import {
 } from '../controllers/admin/invitations.controller.js';
 import { editPhoto, listPhotos, removePhoto, sortPhotos, uploadPhotos } from '../controllers/admin/photos.controller.js';
 import { exportExcel, getLogs, getStats } from '../controllers/admin/reports.controller.js';
-import { getAdminSettings, updateAdminSettings } from '../controllers/admin/settings.controller.js';
+import { getAdminSettings, getItinerary, updateAdminSettings, updateItinerary } from '../controllers/admin/settings.controller.js';
 import { createTeamMember, deleteTeamMember, listTeam } from '../controllers/admin/team.controller.js';
 import { adminLimiter, loginLimiter } from '../middlewares/rateLimits.js';
 import { requireAdmin, requireRole } from '../middlewares/requireAdmin.js';
@@ -39,10 +39,12 @@ adminRouter.post('/invitations', createInvitation);
 adminRouter.post('/invitations/import', uploadSpreadsheet.single('file'), importFromFile);
 adminRouter.put('/invitations/:id/contact', updateContact);
 
-// ── Administrador y wedding planner: confirmaciones, enviar links y reporte ─
+// ── Administrador y wedding planner: confirmaciones, enviar links, reporte e itinerario
 adminRouter.post('/invitations/:id/mark-sent', requireRole('ADMIN', 'PLANNER'), markSent);
 adminRouter.get('/stats', requireRole('ADMIN', 'PLANNER'), getStats);
 adminRouter.get('/export', requireRole('ADMIN', 'PLANNER'), exportExcel);
+adminRouter.get('/itinerary', requireRole('ADMIN', 'PLANNER'), getItinerary);
+adminRouter.put('/itinerary', requireRole('ADMIN', 'PLANNER'), updateItinerary);
 
 // ── Solo el administrador ────────────────────────────────────────────────────
 adminRouter.use(requireRole('ADMIN'));

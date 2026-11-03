@@ -137,15 +137,18 @@ export const settingsSchema = z.object({
     )
     .max(20)
     .default([]),
+});
+
+/** El itinerario se guarda aparte: lo editan el administrador y la wedding planner */
+export const itinerarySchema = z.object({
   itinerary: z
     .array(
       z.object({
         time: z.string().trim().max(10),
-        title: z.string().trim().min(1).max(120),
+        title: z.string().trim().min(1, 'Cada actividad necesita un título').max(120),
         description: z.string().trim().max(300).optional(),
         icon: z.string().trim().max(30),
       }),
     )
-    .max(20)
-    .default([]),
+    .max(20),
 });

@@ -10,9 +10,11 @@ const AdminLogin = lazy(() => import('./pages/admin/AdminLogin'));
 const AdminLayout = lazy(() => import('./pages/admin/AdminLayout'));
 const Dashboard = lazy(() => import('./pages/admin/Dashboard'));
 const Invitations = lazy(() => import('./pages/admin/Invitations'));
+const Itinerary = lazy(() => import('./pages/admin/Itinerary'));
 const Photos = lazy(() => import('./pages/admin/Photos'));
 const Settings = lazy(() => import('./pages/admin/Settings'));
 const Logs = lazy(() => import('./pages/admin/Logs'));
+const Team = lazy(() => import('./pages/admin/Team'));
 
 export default function App() {
   return (
@@ -24,9 +26,11 @@ export default function App() {
           <Route path="/admin" element={<AdminLayout />}>
             <Route index element={<Dashboard />} />
             <Route path="invitaciones" element={<Invitations />} />
+            <Route path="itinerario" element={<Itinerary />} />
             <Route path="fotos" element={<Photos />} />
             <Route path="configuracion" element={<Settings />} />
             <Route path="accesos" element={<Logs />} />
+            <Route path="equipo" element={<Team />} />
             <Route path="*" element={<Navigate to="/admin" replace />} />
           </Route>
           <Route path="*" element={<StatusScreen kind="INVALID" />} />
