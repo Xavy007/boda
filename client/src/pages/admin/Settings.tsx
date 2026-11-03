@@ -38,10 +38,6 @@ export default function Settings() {
     value: (s[k] as string | null) ?? '',
     onChange: (e: { target: { value: string } }) => set(k, e.target.value as never),
   });
-  const num = (k: 'ceremonyLat' | 'ceremonyLng' | 'receptionLat' | 'receptionLng') => ({
-    value: s[k] ?? '',
-    onChange: (e: { target: { value: string } }) => set(k, e.target.value === '' ? null : Number(e.target.value)),
-  });
   const gift = (k: keyof GiftInfo) => ({
     value: s.giftInfo[k] ?? '',
     onChange: (e: { target: { value: string } }) => set('giftInfo', { ...s.giftInfo, [k]: e.target.value }),
@@ -83,8 +79,6 @@ export default function Settings() {
         <Group title="Ceremonia">
           <Field label="Lugar"><input className="input" {...text('ceremonyName')} required /></Field>
           <Field label="Dirección"><input className="input" {...text('ceremonyAddress')} required /></Field>
-          <Field label="Latitud"><input type="number" step="any" className="input" {...num('ceremonyLat')} /></Field>
-          <Field label="Longitud"><input type="number" step="any" className="input" {...num('ceremonyLng')} /></Field>
           <Field label="Link de Google Maps" className="sm:col-span-2"><input type="url" className="input" {...text('ceremonyMapsUrl')} /></Field>
         </Group>
 
@@ -93,8 +87,6 @@ export default function Settings() {
           <Field label="Dirección"><input className="input" {...text('receptionAddress')} required /></Field>
           <Field label="Hora (HH:mm)"><input className="input" placeholder="19:00" {...text('receptionTime')} /></Field>
           <Field label="Link de Google Maps"><input type="url" className="input" {...text('receptionMapsUrl')} /></Field>
-          <Field label="Latitud"><input type="number" step="any" className="input" {...num('receptionLat')} /></Field>
-          <Field label="Longitud"><input type="number" step="any" className="input" {...num('receptionLng')} /></Field>
         </Group>
 
         <Group title="Textos">

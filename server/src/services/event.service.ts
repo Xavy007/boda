@@ -85,16 +85,12 @@ export function toPublicEvent(s: EventSettings) {
     ceremony: {
       name: s.ceremonyName,
       address: s.ceremonyAddress,
-      lat: s.ceremonyLat,
-      lng: s.ceremonyLng,
       mapsUrl: s.ceremonyMapsUrl,
     },
     reception: {
       name: s.receptionName,
       address: s.receptionAddress,
       time: s.receptionTime,
-      lat: s.receptionLat,
-      lng: s.receptionLng,
       mapsUrl: s.receptionMapsUrl,
     },
     dressCode: s.dressCode,

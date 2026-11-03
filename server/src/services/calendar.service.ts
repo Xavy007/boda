@@ -2,18 +2,10 @@ import type { EventSettings } from '@prisma/client';
 import { createEvent, type DateArray } from 'ics';
 import { coupleNames, eventEnd } from './event.service.js';
 
-function mapsLink(s: EventSettings): string | null {
-  if (s.ceremonyMapsUrl) return s.ceremonyMapsUrl;
-  if (s.ceremonyLat != null && s.ceremonyLng != null) {
-    return `https://www.google.com/maps/search/?api=1&query=${s.ceremonyLat},${s.ceremonyLng}`;
-  }
-  return null;
-}
-
 function eventInfo(s: EventSettings, inviteUrl: string) {
   const title = `Boda de ${coupleNames(s)}`;
   const location = `${s.ceremonyName}, ${s.ceremonyAddress}`;
-  const maps = mapsLink(s);
+  const maps = s.ceremonyMapsUrl;
   const lines = [
     `¡Nos casamos! Te esperamos para celebrar juntos.`,
     `Ceremonia: ${s.ceremonyName} — ${s.ceremonyAddress}`,
@@ -60,16 +52,13 @@ function toDateArray(d: Date): DateArray {
 
 export function buildIcs(s: EventSettings, inviteUrl: string): string {
   const e = eventInfo(s, inviteUrl);
-  const geo =
-    s.ceremonyLat != null && s.ceremonyLng != null ? { lat: s.ceremonyLat, lon: s.ceremonyLng } : undefined;
 
   const { error, value } = createEvent({
     uid: `boda-${s.eventDate.getTime()}@invitacion`,
     title: e.title,
     description: e.description,
     location: e.location,
-    url: mapsLink(s) ?? inviteUrl,
-    geo,
+    url: s.ceremonyMapsUrl ?? inviteUrl,
     start: toDateArray(e.start),
     startInputType: 'utc',
     startOutputType: 'utc',

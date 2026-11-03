@@ -87,15 +87,11 @@ model EventSettings {
 
   ceremonyName    String
   ceremonyAddress String
-  ceremonyLat     Float?
-  ceremonyLng     Float?
   ceremonyMapsUrl String?
 
   receptionName    String
   receptionAddress String
   receptionTime    String?
-  receptionLat     Float?
-  receptionLng     Float?
   receptionMapsUrl String?
 
   dressCode       String

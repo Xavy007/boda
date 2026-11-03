@@ -25,8 +25,6 @@ export interface Palette {
 export interface Venue {
   name: string;
   address: string;
-  lat: number | null;
-  lng: number | null;
   mapsUrl: string | null;
   time?: string | null;
 }

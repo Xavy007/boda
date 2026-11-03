@@ -106,14 +106,10 @@ export interface AdminSettings {
   timezone: string;
   ceremonyName: string;
   ceremonyAddress: string;
-  ceremonyLat: number | null;
-  ceremonyLng: number | null;
   ceremonyMapsUrl: string | null;
   receptionName: string;
   receptionAddress: string;
   receptionTime: string | null;
-  receptionLat: number | null;
-  receptionLng: number | null;
   receptionMapsUrl: string | null;
   dressCode: string;
   dressCodeNote: string | null;
