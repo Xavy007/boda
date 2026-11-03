@@ -24,6 +24,8 @@ model Invitation {
   id             String           @id @default(cuid())
   token          String           @unique
   familyName     String
+  /// Invitación a una persona (no a una familia); si tiene más de 1 cupo, va con acompañante
+  isPerson       Boolean          @default(false)
   contactPhone   String?
   contactEmail   String?
   maxGuests      Int              @default(2)
@@ -81,6 +83,11 @@ model EventSettings {
   id             Int       @id @default(1)
   partnerOneName String
   partnerTwoName String
+  /// Nombres de los padres de cada novio, p. ej. "Juan Pérez y María López"
+  partnerOneParents String?
+  partnerTwoParents String?
+  /// Muestra una nota discreta en el RSVP: celebración solo para adultos
+  adultsOnly Boolean @default(false)
   eventDate      DateTime
   eventEndDate   DateTime?
   timezone       String    @default("America/La_Paz")
@@ -137,6 +144,8 @@ model AdminUser {
   passwordHash String
   role         AdminRole @default(ADMIN)
   createdAt    DateTime  @default(now())
+  /// Las sesiones iniciadas antes de esta fecha dejan de valer
+  passwordChangedAt DateTime?
 }
 
 /// Fotos de la invitación. Los archivos (WebP) viven en Supabase Storage (bucket `fotos`);

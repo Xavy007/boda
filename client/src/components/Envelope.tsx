@@ -7,6 +7,10 @@ interface Props {
   partnerOne: string;
   partnerTwo: string;
   familyName: string;
+  /** Invitación para una sola persona: no se habla de "familia". */
+  solo: boolean;
+  /** Acompañantes de una persona invitada (0 si no lleva). */
+  companions: number;
   dateLabel: string;
   /** Se llama en el mismo toque (gesto del usuario): aquí arranca la música. */
   onStart: () => void;
@@ -31,7 +35,7 @@ const PAPER = {
  * fondo del sobre → tarjeta → bolsillos frontales → solapa → sello.
  * Al abrir: el sello se rompe, la solapa gira, la tarjeta sale y crece al centro.
  */
-export function Envelope({ partnerOne, partnerTwo, familyName, dateLabel, onStart, onFinish }: Props) {
+export function Envelope({ partnerOne, partnerTwo, familyName, solo, companions, dateLabel, onStart, onFinish }: Props) {
   const [opening, setOpening] = useState(false);
   const [flapOpen, setFlapOpen] = useState(false);
   const [visible, setVisible] = useState(true);
@@ -173,7 +177,8 @@ export function Envelope({ partnerOne, partnerTwo, familyName, dateLabel, onStar
             transition={{ duration: opening ? 0.4 : 0.8, delay: opening ? 0 : 0.4 }}
           >
             <p className="font-serif text-xl italic text-ink/70">
-              Para la familia <span className="not-italic text-ink">{familyName}</span>
+              {solo ? 'Para' : 'Para la familia'} <span className="not-italic text-ink">{familyName}</span>
+              {companions > 0 && (companions === 1 ? ' y acompañante' : ' y acompañantes')}
             </p>
             <button
               type="button"

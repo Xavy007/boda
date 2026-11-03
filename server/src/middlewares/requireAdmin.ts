@@ -8,6 +8,7 @@ import { prisma } from '../lib/prisma.js';
 export interface AdminJwtPayload {
   sub: string;
   email: string;
+  iat?: number;
 }
 
 export async function requireAdmin(req: Request, res: Response, next: NextFunction) {
@@ -24,8 +25,10 @@ export async function requireAdmin(req: Request, res: Response, next: NextFuncti
     return;
   }
   // El rol se lee de la base en cada request: quitar un usuario o cambiar su rol aplica al instante
-  const user = await prisma.adminUser.findUnique({ where: { id: payload.sub }, select: { role: true } });
-  if (!user) {
+  const user = await prisma.adminUser.findUnique({ where: { id: payload.sub }, select: { role: true, passwordChangedAt: true } });
+  // Una sesión iniciada antes del último cambio de contraseña ya no vale
+  const staleSession = user?.passwordChangedAt && (payload.iat ?? 0) * 1000 < user.passwordChangedAt.getTime() - 1000;
+  if (!user || staleSession) {
     res.status(401).json({ error: 'UNAUTHORIZED' });
     return;
   }

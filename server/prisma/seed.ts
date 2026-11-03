@@ -29,6 +29,9 @@ async function main() {
   const settings = {
     partnerOneName: 'Valentina',
     partnerTwoName: 'Mateo',
+    partnerOneParents: 'Roberto Gómez y Lucía Fernández',
+    partnerTwoParents: 'Andrés Rojas y Carmen Salazar',
+    adultsOnly: false,
     eventDate: new Date(`2027-03-20T16:00:00${TZ_OFFSET}`),
     eventEndDate: new Date(`2027-03-21T02:00:00${TZ_OFFSET}`),
     timezone: 'America/La_Paz',

@@ -1,6 +1,9 @@
 import 'dotenv/config';
 import { z } from 'zod';
 
+// Una variable vacía (VAR="") se trata como no definida
+const optionalString = z.string().optional().transform((v) => v || undefined);
+
 const schema = z.object({
   NODE_ENV: z.enum(['development', 'production', 'test']).default('development'),
   PORT: z.coerce.number().int().positive().default(4000),
@@ -15,7 +18,7 @@ const schema = z.object({
     .url()
     .transform((url) => url.replace(/\/+$/, ''))
     .optional(),
-  SUPABASE_SECRET_KEY: z.string().min(1).optional(),
+  SUPABASE_SECRET_KEY: optionalString,
 });
 
 const parsed = schema.safeParse(process.env);

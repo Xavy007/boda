@@ -1,6 +1,6 @@
 import type { Request, Response } from 'express';
 import { prisma } from '../../lib/prisma.js';
-import { settingsSchema } from '../../schemas/index.js';
+import { itinerarySchema, settingsSchema } from '../../schemas/index.js';
 import { DEFAULT_PALETTE, getSettings, invalidateSettingsCache } from '../../services/event.service.js';
 import { HttpError } from '../../utils/http.js';
 import { utcToZonedLocal, zonedLocalToUtc } from '../../utils/time.js';
@@ -34,4 +34,17 @@ export async function updateAdminSettings(req: Request, res: Response) {
   });
   invalidateSettingsCache();
   await getAdminSettings(req, res);
+}
+
+export async function getItinerary(_req: Request, res: Response) {
+  invalidateSettingsCache();
+  const s = await getSettings();
+  res.json(s.itinerary ?? []);
+}
+
+export async function updateItinerary(req: Request, res: Response) {
+  const { itinerary } = itinerarySchema.parse(req.body);
+  await prisma.eventSettings.update({ where: { id: 1 }, data: { itinerary } });
+  invalidateSettingsCache();
+  res.json(itinerary);
 }

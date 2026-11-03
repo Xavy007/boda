@@ -44,6 +44,12 @@ export const IconMoon = (p: P) => (
 export const IconHeart = (p: P) => (
   <svg {...base(p)}><path d="M12 20s-7-4.5-7-10a4 4 0 0 1 7-2.6A4 4 0 0 1 19 10c0 5.5-7 10-7 10z" /></svg>
 );
+export const IconUsers = (p: P) => (
+  <svg {...base(p)}><circle cx="9" cy="8" r="3.5" /><path d="M2.5 20a6.5 6.5 0 0 1 13 0" /><path d="M15.5 4.6a3.5 3.5 0 0 1 0 6.8M18 14.5a6.5 6.5 0 0 1 3.5 5.5" /></svg>
+);
+export const IconList = (p: P) => (
+  <svg {...base(p)}><path d="M9 6h11M9 12h11M9 18h11" /><circle cx="4.5" cy="6" r="1" /><circle cx="4.5" cy="12" r="1" /><circle cx="4.5" cy="18" r="1" /></svg>
+);
 export const IconPin = (p: P) => (
   <svg {...base(p)}><path d="M12 21s-7-6-7-11.5a7 7 0 0 1 14 0C19 15 12 21 12 21z" /><circle cx="12" cy="9.5" r="2.5" /></svg>
 );

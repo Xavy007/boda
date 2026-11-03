@@ -207,8 +207,37 @@ export default function Invitations() {
 }
 
 // ── Formulario crear / editar ─────────────────────────────────────────────────
+function inviteeHint(isPerson: boolean, maxGuests: number) {
+  if (!isPerson) return maxGuests === 1 ? 'Con 1 cupo se le habla en singular, sin decir "familia"' : 'Se mostrará como "Querida familia …"';
+  return maxGuests > 1 ? `Se mostrará como "… y acompañante" (${maxGuests} cupos)` : 'Se mostrará solo su nombre';
+}
+
+/** Familia o persona: cambia cómo la invitación se dirige al invitado */
+function InviteeKind({ isPerson, onChange }: { isPerson: boolean; onChange: (v: boolean) => void }) {
+  return (
+    <div className="grid grid-cols-2 gap-2 rounded-2xl bg-ivory p-1" role="radiogroup" aria-label="Tipo de invitación">
+      {[
+        { value: false, label: 'Familia' },
+        { value: true, label: 'Persona' },
+      ].map((o) => (
+        <button
+          key={o.label}
+          type="button"
+          role="radio"
+          aria-checked={isPerson === o.value}
+          onClick={() => onChange(o.value)}
+          className={`min-h-[44px] rounded-xl text-sm font-medium transition ${isPerson === o.value ? 'bg-white text-ink shadow-card' : 'text-ink/55'}`}
+        >
+          {o.label}
+        </button>
+      ))}
+    </div>
+  );
+}
+
 interface FormValues {
   familyName: string;
+  isPerson: boolean;
   contactPhone: string;
   contactEmail: string;
   maxGuests: number;
@@ -219,6 +248,7 @@ interface FormValues {
 function InvitationForm({ initial, id, onSaved, showDevices = true }: { initial?: Partial<FormValues>; id?: string; onSaved: () => void; showDevices?: boolean }) {
   const [values, setValues] = useState<FormValues>({
     familyName: '',
+    isPerson: false,
     contactPhone: '',
     contactEmail: '',
     maxGuests: 2,
@@ -246,7 +276,8 @@ function InvitationForm({ initial, id, onSaved, showDevices = true }: { initial?
 
   return (
     <form onSubmit={submit} className="grid gap-4">
-      <Field label="Nombre de la familia" hint='Se mostrará como "Querida familia …"'>
+      <InviteeKind isPerson={values.isPerson} onChange={(v) => set('isPerson', v)} />
+      <Field label={values.isPerson ? 'Nombre de la persona' : 'Nombre de la familia'} hint={inviteeHint(values.isPerson, values.maxGuests)}>
         <input className="input" value={values.familyName} onChange={(e) => set('familyName', e.target.value)} required />
       </Field>
       <div className="grid grid-cols-2 gap-3">
@@ -276,14 +307,15 @@ function InvitationForm({ initial, id, onSaved, showDevices = true }: { initial?
 
 // ── Datos de contacto y respuesta (planner y novios) ─────────────────────────
 function ContactModal({ invitation, onClose, onSaved }: { invitation: AdminInvitation | null; onClose: () => void; onSaved: () => void }) {
-  const [values, setValues] = useState({ familyName: '', contactPhone: '', contactEmail: '' });
+  const [values, setValues] = useState({ familyName: '', isPerson: false, contactPhone: '', contactEmail: '' });
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
-  const set = (k: keyof typeof values, v: string) => setValues((p) => ({ ...p, [k]: v }));
+  const set = <K extends keyof typeof values>(k: K, v: (typeof values)[K]) => setValues((p) => ({ ...p, [k]: v }));
 
   useEffect(() => {
     setValues({
       familyName: invitation?.familyName ?? '',
+      isPerson: invitation?.isPerson ?? false,
       contactPhone: invitation?.contactPhone ?? '',
       contactEmail: invitation?.contactEmail ?? '',
     });
@@ -322,7 +354,8 @@ function ContactModal({ invitation, onClose, onSaved }: { invitation: AdminInvit
         ) : (
           <p className="text-sm text-ink/65">{invitation.maxGuests} cupos{invitation.link ? ' · aún no responde' : ''}</p>
         ))}
-        <Field label="Nombre de la familia">
+        <InviteeKind isPerson={values.isPerson} onChange={(v) => set('isPerson', v)} />
+        <Field label={values.isPerson ? 'Nombre de la persona' : 'Nombre de la familia'} hint={invitation ? inviteeHint(values.isPerson, invitation.maxGuests) : undefined}>
           <input className="input" value={values.familyName} onChange={(e) => set('familyName', e.target.value)} required />
         </Field>
         <Field label="Teléfono (WhatsApp)" hint="Con código de país si no es de Bolivia, p. ej. +54 9 11 1234 5678">
@@ -464,6 +497,7 @@ function DetailModal({ id, onClose, onChanged }: { id: string | null; onClose: (
           id={detail.id}
           initial={{
             familyName: detail.familyName,
+            isPerson: detail.isPerson,
             contactPhone: detail.contactPhone ?? '',
             contactEmail: detail.contactEmail ?? '',
             maxGuests: detail.maxGuests,

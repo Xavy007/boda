@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Navigate, NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom';
-import { IconCalendar, IconCamera, IconClock, IconHeart, IconRings } from '@/components/Icons';
+import { IconCalendar, IconCamera, IconClock, IconHeart, IconList, IconRings, IconUsers } from '@/components/Icons';
 import { LoadingScreen } from '@/components/LoadingScreen';
 import { api } from '@/lib/api';
 import { ROLE_LABELS, type AdminMe, type AdminRole } from './types';
@@ -9,9 +9,11 @@ import { ToastProvider } from './ui';
 const NAV: { to: string; label: string; icon: typeof IconHeart; end?: boolean; roles: AdminRole[] }[] = [
   { to: '/admin', label: 'Inicio', icon: IconHeart, end: true, roles: ['ADMIN', 'PLANNER'] },
   { to: '/admin/invitaciones', label: 'Invitados', icon: IconRings, roles: ['ADMIN', 'PLANNER', 'NOVIOS'] },
+  { to: '/admin/itinerario', label: 'Itinerario', icon: IconList, roles: ['ADMIN', 'PLANNER'] },
   { to: '/admin/fotos', label: 'Fotos', icon: IconCamera, roles: ['ADMIN'] },
   { to: '/admin/configuracion', label: 'Evento', icon: IconCalendar, roles: ['ADMIN'] },
   { to: '/admin/accesos', label: 'Accesos', icon: IconClock, roles: ['ADMIN'] },
+  { to: '/admin/equipo', label: 'Equipo', icon: IconUsers, roles: ['ADMIN'] },
 ];
 
 export default function AdminLayout() {
@@ -34,7 +36,7 @@ export default function AdminLayout() {
   if (!me) return <LoadingScreen />;
 
   const nav = NAV.filter((n) => n.roles.includes(me.role));
-  // La planner solo ve Inicio e Invitados; los novios, solo Invitados
+  // La planner ve Inicio, Invitados e Itinerario; los novios, solo Invitados
   const allowed = nav.some((n) => (n.end ? pathname.replace(/\/$/, '') === n.to : pathname.startsWith(n.to)));
   if (!allowed) return <Navigate to={nav[0].to} replace />;
 
