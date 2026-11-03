@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useState, type FormEvent } from 'react
 import { IconCopy, IconWhatsapp } from '@/components/Icons';
 import { api, ApiError, downloadFile } from '@/lib/api';
 import { copyText } from '@/lib/format';
-import { fmtDateTime, type AdminInvitation, type DisplayStatus, type InvitationDetail } from './types';
+import { fmtDateTime, type AdminInvitation, type DisplayStatus, type InvitationDetail, SIDE_LABELS, isCouple, type GuestSide } from './types';
 import { EmptyState, Field, Modal, PageHeader, StatusBadge, useAdminMe, useToast } from './ui';
 
 type Filter = 'TODOS' | DisplayStatus | 'BLOQUEADO';
@@ -23,7 +23,7 @@ export default function Invitations() {
   const toast = useToast();
   const { role } = useAdminMe();
   const isAdmin = role === 'ADMIN';
-  const canSend = role !== 'NOVIOS';
+  const canSend = !isCouple(role);
   const [items, setItems] = useState<AdminInvitation[] | null>(null);
   const [filter, setFilter] = useState<Filter>('TODOS');
   const [query, setQuery] = useState('');
@@ -140,6 +140,7 @@ export default function Invitations() {
             <div className="flex flex-wrap items-start justify-between gap-3">
               <button type="button" onClick={() => (isAdmin ? setDetailId(inv.id) : setContactFor(inv))} className="min-w-0 text-left">
                 <p className="truncate font-serif text-2xl leading-tight hover:text-gold">{inv.familyName}</p>
+                {inv.side && <span className="mt-1 inline-block rounded-full bg-ink/5 px-2.5 py-0.5 text-[11px] font-semibold text-ink/60">{SIDE_LABELS[inv.side]}</span>}
                 <p className="mt-1 text-xs text-ink/50">
                   {canSend && inv.status === 'CONFIRMADO' ? `${inv.attendingCount} de ${inv.maxGuests} asisten${inv.respondentName ? ` (${inv.respondentName})` : ''}` : `${inv.maxGuests} cupos`}
                   {isAdmin && ` · ${inv.deviceCount}/${inv.maxDevices} dispositivos`}
@@ -212,6 +213,22 @@ function inviteeHint(isPerson: boolean, maxGuests: number) {
   return maxGuests > 1 ? `Se mostrará como "… y acompañante" (${maxGuests} cupos)` : 'Se mostrará solo su nombre';
 }
 
+/** De qué lado es el invitado. La novia y el novio no lo eligen: queda del suyo. */
+function SidePicker({ value, onChange }: { value: GuestSide | null; onChange: (v: GuestSide | null) => void }) {
+  const { role } = useAdminMe();
+  if (isCouple(role)) return null;
+  return (
+    <Field label="Invitado de">
+      <select className="input" value={value ?? ''} onChange={(e) => onChange((e.target.value || null) as GuestSide | null)}>
+        <option value="">Sin asignar</option>
+        {(Object.keys(SIDE_LABELS) as GuestSide[]).map((s) => (
+          <option key={s} value={s}>{SIDE_LABELS[s]}</option>
+        ))}
+      </select>
+    </Field>
+  );
+}
+
 /** Familia o persona: cambia cómo la invitación se dirige al invitado */
 function InviteeKind({ isPerson, onChange }: { isPerson: boolean; onChange: (v: boolean) => void }) {
   return (
@@ -238,6 +255,7 @@ function InviteeKind({ isPerson, onChange }: { isPerson: boolean; onChange: (v: 
 interface FormValues {
   familyName: string;
   isPerson: boolean;
+  side: GuestSide | null;
   contactPhone: string;
   contactEmail: string;
   maxGuests: number;
@@ -249,6 +267,7 @@ function InvitationForm({ initial, id, onSaved, showDevices = true }: { initial?
   const [values, setValues] = useState<FormValues>({
     familyName: '',
     isPerson: false,
+    side: null,
     contactPhone: '',
     contactEmail: '',
     maxGuests: 2,
@@ -277,6 +296,7 @@ function InvitationForm({ initial, id, onSaved, showDevices = true }: { initial?
   return (
     <form onSubmit={submit} className="grid gap-4">
       <InviteeKind isPerson={values.isPerson} onChange={(v) => set('isPerson', v)} />
+      <SidePicker value={values.side} onChange={(v) => set('side', v)} />
       <Field label={values.isPerson ? 'Nombre de la persona' : 'Nombre de la familia'} hint={inviteeHint(values.isPerson, values.maxGuests)}>
         <input className="input" value={values.familyName} onChange={(e) => set('familyName', e.target.value)} required />
       </Field>
@@ -307,7 +327,7 @@ function InvitationForm({ initial, id, onSaved, showDevices = true }: { initial?
 
 // ── Datos de contacto y respuesta (planner y novios) ─────────────────────────
 function ContactModal({ invitation, onClose, onSaved }: { invitation: AdminInvitation | null; onClose: () => void; onSaved: () => void }) {
-  const [values, setValues] = useState({ familyName: '', isPerson: false, contactPhone: '', contactEmail: '' });
+  const [values, setValues] = useState<{ familyName: string; isPerson: boolean; side: GuestSide | null; contactPhone: string; contactEmail: string }>({ familyName: '', isPerson: false, side: null, contactPhone: '', contactEmail: '' });
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const set = <K extends keyof typeof values>(k: K, v: (typeof values)[K]) => setValues((p) => ({ ...p, [k]: v }));
@@ -316,6 +336,7 @@ function ContactModal({ invitation, onClose, onSaved }: { invitation: AdminInvit
     setValues({
       familyName: invitation?.familyName ?? '',
       isPerson: invitation?.isPerson ?? false,
+      side: invitation?.side ?? null,
       contactPhone: invitation?.contactPhone ?? '',
       contactEmail: invitation?.contactEmail ?? '',
     });
@@ -355,6 +376,7 @@ function ContactModal({ invitation, onClose, onSaved }: { invitation: AdminInvit
           <p className="text-sm text-ink/65">{invitation.maxGuests} cupos{invitation.link ? ' · aún no responde' : ''}</p>
         ))}
         <InviteeKind isPerson={values.isPerson} onChange={(v) => set('isPerson', v)} />
+        <SidePicker value={values.side} onChange={(v) => set('side', v)} />
         <Field label={values.isPerson ? 'Nombre de la persona' : 'Nombre de la familia'} hint={invitation ? inviteeHint(values.isPerson, invitation.maxGuests) : undefined}>
           <input className="input" value={values.familyName} onChange={(e) => set('familyName', e.target.value)} required />
         </Field>
@@ -498,6 +520,7 @@ function DetailModal({ id, onClose, onChanged }: { id: string | null; onClose: (
           initial={{
             familyName: detail.familyName,
             isPerson: detail.isPerson,
+            side: detail.side,
             contactPhone: detail.contactPhone ?? '',
             contactEmail: detail.contactEmail ?? '',
             maxGuests: detail.maxGuests,

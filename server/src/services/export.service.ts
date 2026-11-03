@@ -1,3 +1,4 @@
+import type { GuestSide } from '@prisma/client';
 import ExcelJS from 'exceljs';
 import { prisma } from '../lib/prisma.js';
 
@@ -13,6 +14,10 @@ function styleHeader(sheet: ExcelJS.Worksheet) {
   sheet.autoFilter = { from: { row: 1, column: 1 }, to: { row: 1, column: sheet.columnCount } };
 }
 
+function sideLabel(side: GuestSide | null): string {
+  return side === 'NOVIA' ? 'Novia' : side === 'NOVIO' ? 'Novio' : side === 'AMBOS' ? 'De los dos' : 'Sin asignar';
+}
+
 export async function buildExportWorkbook(): Promise<Buffer> {
   const invitations = await prisma.invitation.findMany({ orderBy: { familyName: 'asc' } });
 
@@ -23,6 +28,7 @@ export async function buildExportWorkbook(): Promise<Buffer> {
   const summary = wb.addWorksheet('Familias');
   summary.columns = [
     { header: 'Familia', key: 'family', width: 30 },
+    { header: 'Lado', key: 'side', width: 12 },
     { header: 'Estado', key: 'status', width: 14 },
     { header: 'Cupos', key: 'max', width: 8 },
     { header: 'Asisten', key: 'count', width: 9 },
@@ -36,6 +42,7 @@ export async function buildExportWorkbook(): Promise<Buffer> {
   for (const inv of invitations) {
     summary.addRow({
       family: inv.familyName,
+      side: sideLabel(inv.side),
       status: STATUS_LABEL[inv.status],
       max: inv.maxGuests,
       count: inv.status === 'CONFIRMADO' ? inv.attendingCount : 0,
@@ -53,6 +60,7 @@ export async function buildExportWorkbook(): Promise<Buffer> {
   const confirmedSheet = wb.addWorksheet('Confirmados');
   confirmedSheet.columns = [
     { header: 'Familia', key: 'family', width: 30 },
+    { header: 'Lado', key: 'side', width: 12 },
     { header: 'Confirmó', key: 'respondent', width: 30 },
     { header: 'Personas', key: 'count', width: 10 },
     { header: 'Restricciones alimentarias', key: 'diet', width: 36 },
@@ -63,6 +71,7 @@ export async function buildExportWorkbook(): Promise<Buffer> {
     n += inv.attendingCount;
     confirmedSheet.addRow({
       family: inv.familyName,
+      side: sideLabel(inv.side),
       respondent: inv.respondentName ?? '',
       count: inv.attendingCount,
       diet: inv.dietaryNotes ?? '',
@@ -82,6 +91,23 @@ export async function buildExportWorkbook(): Promise<Buffer> {
     ['Personas que asisten', n],
     ['Cupos asignados', invitations.reduce((a, i) => a + i.maxGuests, 0)],
   ]);
+  totals.addRow([]);
+  totals.addRow(['Por lado', 'Invitaciones', 'Cupos', 'Confirmadas', 'Personas que asisten', 'No asisten', 'Pendientes']).font = { bold: true };
+  for (const side of ['NOVIA', 'NOVIO', 'AMBOS', null] as const) {
+    const list = invitations.filter((i) => i.side === side);
+    if (side === null && !list.length) continue;
+    const ok = list.filter((i) => i.status === 'CONFIRMADO');
+    totals.addRow([
+      sideLabel(side),
+      list.length,
+      list.reduce((a, i) => a + i.maxGuests, 0),
+      ok.length,
+      ok.reduce((a, i) => a + i.attendingCount, 0),
+      list.filter((i) => i.status === 'RECHAZADO').length,
+      list.filter((i) => i.status === 'PENDIENTE').length,
+    ]);
+  }
+  for (const col of [2, 3, 4, 5, 6, 7]) totals.getColumn(col).width = 14;
   totals.getColumn(1).width = 26;
   totals.getColumn(1).font = { bold: true };
 

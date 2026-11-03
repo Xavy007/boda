@@ -1,3 +1,4 @@
+import type { AdminRole, GuestSide } from '@prisma/client';
 import type { Request, Response } from 'express';
 import { prisma } from '../../lib/prisma.js';
 import { invitationContactSchema, invitationCreateSchema, invitationUpdateSchema } from '../../schemas/index.js';
@@ -17,6 +18,11 @@ function displayStatus(inv: { status: string; sentAt: Date | null; firstOpenedAt
   return 'NO_ENVIADO';
 }
 
+/** La novia y el novio solo cargan invitados de su lado: el lado no lo eligen ellos */
+export function forcedSide(role: AdminRole | undefined): GuestSide | undefined {
+  return role === 'NOVIA' || role === 'NOVIO' ? role : undefined;
+}
+
 function fillTemplate(template: string, inv: { familyName: string; maxGuests: number; token: string }) {
   return template
     .replaceAll('{nombre_familia}', cleanFamilyName(inv.familyName))
@@ -26,7 +32,7 @@ function fillTemplate(template: string, inv: { familyName: string; maxGuests: nu
 
 export async function listInvitations(req: Request, res: Response) {
   // Los novios solo cargan datos: no ven los links privados ni las respuestas
-  const canSend = req.adminRole !== 'NOVIOS';
+  const canSend = !forcedSide(req.adminRole);
   const [invitations, blocked, settings] = await Promise.all([
     prisma.invitation.findMany({
       orderBy: { createdAt: 'desc' },
@@ -50,6 +56,7 @@ export async function listInvitations(req: Request, res: Response) {
         token: canSend ? inv.token : null,
         familyName: inv.familyName,
         isPerson: inv.isPerson,
+        side: inv.side,
         contactPhone: inv.contactPhone,
         contactEmail: inv.contactEmail,
         maxGuests: inv.maxGuests,
@@ -92,7 +99,8 @@ export async function createInvitation(req: Request, res: Response) {
   // El máximo de dispositivos es una medida de seguridad: solo lo elige el administrador
   const devices = req.adminRole === 'ADMIN' ? maxDevices : undefined;
   const maxGuests = data.maxGuests ?? (await getSettings()).defaultMaxGuests;
-  const inv = await prisma.invitation.create({ data: { ...data, maxGuests, maxDevices: devices, token: generateToken() } });
+  const side = forcedSide(req.adminRole) ?? data.side;
+  const inv = await prisma.invitation.create({ data: { ...data, side, maxGuests, maxDevices: devices, token: generateToken() } });
   res.status(201).json(inv);
 }
 
@@ -105,10 +113,11 @@ export async function updateInvitation(req: Request, res: Response) {
 /** Nombre, teléfono y email: lo único que la planner y los novios pueden editar */
 export async function updateContact(req: Request, res: Response) {
   const data = invitationContactSchema.parse(req.body);
+  if (forcedSide(req.adminRole)) delete data.side;
   const inv = await prisma.invitation.update({
     where: { id: String(req.params.id) },
     data,
-    select: { familyName: true, isPerson: true, contactPhone: true, contactEmail: true },
+    select: { familyName: true, isPerson: true, side: true, contactPhone: true, contactEmail: true },
   });
   res.json(inv);
 }
@@ -120,7 +129,7 @@ export async function deleteInvitation(req: Request, res: Response) {
 
 export async function importFromFile(req: Request, res: Response) {
   if (!req.file) throw new HttpError(400, 'NO_FILE', 'Adjunta un archivo .csv o .xlsx');
-  const result = await importInvitations(req.file.buffer, req.file.originalname);
+  const result = await importInvitations(req.file.buffer, req.file.originalname, forcedSide(req.adminRole));
   res.status(201).json(result);
 }
 

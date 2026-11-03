@@ -70,11 +70,11 @@ export default function Team() {
 
   return (
     <>
-      <PageHeader title="Equipo" subtitle="Cuentas para la wedding planner y los novios" />
+      <PageHeader title="Equipo" subtitle="Cuentas para la wedding planner, la novia y el novio" />
       <section className="card !rounded-3xl p-5 sm:p-6">
         <ul className="space-y-1 text-sm text-ink/55">
           <li><b className="text-ink/75">Wedding planner:</b> revisa quién confirmó y cuántas personas van, envía los links por WhatsApp, exporta el Excel, carga familias y teléfonos y arma el itinerario.</li>
-          <li><b className="text-ink/75">Novios:</b> solo cargan familias, teléfonos y datos de contacto. No ven los links, las respuestas ni el reporte.</li>
+          <li><b className="text-ink/75">Novia / Novio:</b> solo cargan familias, teléfonos y datos de contacto; lo que carga cada uno queda como invitado de su lado. No ven los links, las respuestas ni el reporte.</li>
           <li>Ninguno ve fotos, la configuración ni los accesos, ni puede borrar invitaciones o cambiar cupos de las ya creadas.</li>
         </ul>
 
@@ -119,7 +119,8 @@ export default function Team() {
           <Field label="Rol">
             <select className="input" value={role} onChange={(e) => setRole(e.target.value as TeamMember['role'])}>
               <option value="PLANNER">{ROLE_LABELS.PLANNER}</option>
-              <option value="NOVIOS">{ROLE_LABELS.NOVIOS}</option>
+              <option value="NOVIA">{ROLE_LABELS.NOVIA}</option>
+              <option value="NOVIO">{ROLE_LABELS.NOVIO}</option>
             </select>
           </Field>
           <button type="submit" className="btn-primary" disabled={saving}>{saving ? 'Creando…' : 'Crear cuenta'}</button>

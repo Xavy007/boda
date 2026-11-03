@@ -1,5 +1,6 @@
 import { parse } from 'csv-parse/sync';
 import ExcelJS from 'exceljs';
+import type { GuestSide } from '@prisma/client';
 import { z } from 'zod';
 import { prisma } from '../lib/prisma.js';
 import { HttpError } from '../utils/http.js';
@@ -18,6 +19,13 @@ const rowSchema = z.object({
     .optional()
     .refine((v) => !v || z.string().email().safeParse(v).success, 'email inválido'),
   cupos: z.coerce.number().int().min(1, 'cupos debe ser ≥ 1').max(30).optional(),
+  // novia / novio / ambos (también "los dos")
+  lado: z
+    .string()
+    .optional()
+    .transform((v) => (v ? v.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').trim() : undefined))
+    .refine((v) => !v || ['novia', 'novio', 'ambos', 'los dos'].includes(v), 'lado debe ser novia, novio o ambos')
+    .transform((v): GuestSide | undefined => (v === 'novia' ? 'NOVIA' : v === 'novio' ? 'NOVIO' : v ? 'AMBOS' : undefined)),
 });
 
 function normalizeKey(key: string): string {
@@ -66,7 +74,7 @@ async function readRows(buffer: Buffer, filename: string): Promise<RawRow[]> {
   throw new HttpError(400, 'UNSUPPORTED_FILE', 'Formato no soportado. Usa .csv o .xlsx');
 }
 
-export async function importInvitations(buffer: Buffer, filename: string) {
+export async function importInvitations(buffer: Buffer, filename: string, forcedSide?: GuestSide) {
   const rows = (await readRows(buffer, filename)).map(normalizeRow);
   if (!rows.length) throw new HttpError(400, 'EMPTY_FILE', 'El archivo no contiene filas');
   if (rows.length > 1000) throw new HttpError(400, 'TOO_MANY_ROWS', 'Máximo 1000 filas por importación');
@@ -79,6 +87,7 @@ export async function importInvitations(buffer: Buffer, filename: string) {
     contactPhone?: string;
     contactEmail?: string;
     maxGuests: number;
+    side?: GuestSide;
   }[] = [];
 
   rows.forEach((raw, i) => {
@@ -93,6 +102,7 @@ export async function importInvitations(buffer: Buffer, filename: string) {
       contactPhone: parsed.data.telefono,
       contactEmail: parsed.data.email,
       maxGuests: parsed.data.cupos ?? defaultMaxGuests,
+      side: forcedSide ?? parsed.data.lado,
     });
   });
 

@@ -38,6 +38,7 @@ export const invitationCreateSchema = z.object({
     .nullable()
     .or(z.literal('').transform(() => null)),
   isPerson: z.boolean().optional(),
+  side: z.enum(['NOVIA', 'NOVIO', 'AMBOS']).nullable().optional(),
   maxGuests: z.coerce.number().int().min(1).max(30).optional(),
   maxDevices: z.coerce.number().int().min(1).max(10).default(2),
   notes: optionalText(2000),
@@ -45,13 +46,13 @@ export const invitationCreateSchema = z.object({
 
 export const teamMemberCreateSchema = z.object({
   email: z.string().trim().toLowerCase().email('Email inválido').max(160),
-  role: z.enum(['PLANNER', 'NOVIOS']),
+  role: z.enum(['PLANNER', 'NOVIA', 'NOVIO']),
   password: z.string().min(10, 'La contraseña debe tener al menos 10 caracteres').max(200),
 });
 
 /** Datos de contacto: lo que la planner y los novios pueden corregir */
 export const invitationContactSchema = invitationCreateSchema
-  .pick({ familyName: true, isPerson: true, contactPhone: true, contactEmail: true })
+  .pick({ familyName: true, isPerson: true, side: true, contactPhone: true, contactEmail: true })
   .partial();
 
 export const invitationUpdateSchema = invitationCreateSchema.partial().extend({

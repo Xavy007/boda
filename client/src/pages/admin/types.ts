@@ -1,6 +1,7 @@
 import type { InvitationStatus, Palette, GiftInfo, ItineraryItem, StoryItem } from '@/lib/types';
 
-export type AdminRole = 'ADMIN' | 'PLANNER' | 'NOVIOS';
+export type AdminRole = 'ADMIN' | 'PLANNER' | 'NOVIA' | 'NOVIO';
+export type GuestSide = 'NOVIA' | 'NOVIO' | 'AMBOS';
 
 export interface AdminMe {
   email: string;
@@ -17,8 +18,18 @@ export interface TeamMember {
 export const ROLE_LABELS: Record<AdminRole, string> = {
   ADMIN: 'Administrador',
   PLANNER: 'Wedding planner',
-  NOVIOS: 'Novios',
+  NOVIA: 'Novia',
+  NOVIO: 'Novio',
 };
+
+export const SIDE_LABELS: Record<GuestSide, string> = {
+  NOVIA: 'Novia',
+  NOVIO: 'Novio',
+  AMBOS: 'De los dos',
+};
+
+/** La novia y el novio solo cargan datos, y sus invitados quedan de su lado */
+export const isCouple = (role: AdminRole) => role === 'NOVIA' || role === 'NOVIO';
 
 export type DisplayStatus = 'NO_ENVIADO' | 'ENVIADO' | 'ABIERTO' | 'CONFIRMADO' | 'RECHAZADO';
 
@@ -28,6 +39,7 @@ export interface AdminInvitation {
   token: string | null;
   familyName: string;
   isPerson: boolean;
+  side: GuestSide | null;
   contactPhone: string | null;
   contactEmail: string | null;
   maxGuests: number;
@@ -67,6 +79,7 @@ export interface InvitationDetail {
   token: string;
   familyName: string;
   isPerson: boolean;
+  side: GuestSide | null;
   contactPhone: string | null;
   contactEmail: string | null;
   maxGuests: number;
@@ -98,6 +111,7 @@ export interface Stats {
   blockedTotal: number;
   blockedWeek: number;
   recentBlocked: AccessLogRow[];
+  bySide: { side: GuestSide | null; invitations: number; seats: number; attending: number; confirmed: number; rejected: number; pending: number }[];
 }
 
 export interface AdminSettings {

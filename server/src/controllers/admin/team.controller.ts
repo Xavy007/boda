@@ -5,7 +5,7 @@ import { prisma } from '../../lib/prisma.js';
 import { teamMemberCreateSchema } from '../../schemas/index.js';
 import { HttpError } from '../../utils/http.js';
 
-const TEAM_ROLES = ['PLANNER', 'NOVIOS'] as const;
+const TEAM_ROLES = ['PLANNER', 'NOVIA', 'NOVIO'] as const;
 const select = { id: true, email: true, role: true, createdAt: true } as const;
 // Sin caracteres que se confunden al copiarlos a mano (0/O, 1/l/I)
 const newPassword = customAlphabet('abcdefghjkmnpqrstuvwxyzABCDEFGHJKMNPQRSTUVWXYZ23456789', 12);

@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { LoadingScreen } from '@/components/LoadingScreen';
 import { api, downloadFile } from '@/lib/api';
-import { fmtDateTime, type Stats } from './types';
+import { fmtDateTime, SIDE_LABELS, type Stats } from './types';
 import { PageHeader, useAdminMe, useToast } from './ui';
 
 function StatCard({ label, value, tone = 'default', hint }: { label: string; value: number | string; tone?: 'default' | 'sage' | 'gold' | 'rose'; hint?: string }) {
@@ -85,6 +85,26 @@ export default function Dashboard() {
         </div>
         <div className="mt-4 h-3 overflow-hidden rounded-full bg-ink/[0.06]" role="progressbar" aria-valuenow={pct} aria-valuemin={0} aria-valuemax={100}>
           <div className="h-full rounded-full bg-gradient-to-r from-sage to-gold transition-all duration-700" style={{ width: `${pct}%` }} />
+        </div>
+      </div>
+
+      <div className="card mt-6 !rounded-3xl p-6">
+        <p className="text-[11px] font-medium uppercase tracking-[0.16em] text-ink/50">Invitados por lado</p>
+        <div className="mt-4 grid gap-3 sm:grid-cols-3">
+          {stats.bySide
+            .filter((b) => b.side !== null || b.invitations > 0)
+            .map((b) => (
+              <div key={b.side ?? 'none'} className="rounded-2xl bg-ivory p-4">
+                <p className="font-serif text-2xl">{b.side ? SIDE_LABELS[b.side] : 'Sin asignar'}</p>
+                <p className="mt-2 font-serif text-4xl leading-none text-sage">
+                  {b.attending} <span className="text-xl text-ink/40">/ {b.seats}</span>
+                </p>
+                <p className="mt-1 text-xs text-ink/50">personas confirmadas / cupos</p>
+                <p className="mt-3 text-sm text-ink/70">
+                  {b.invitations} {b.invitations === 1 ? 'invitación' : 'invitaciones'} · {b.confirmed} confirmadas · {b.pending} pendientes · {b.rejected} no asisten
+                </p>
+              </div>
+            ))}
         </div>
       </div>
 

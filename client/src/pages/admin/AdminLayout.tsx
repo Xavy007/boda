@@ -8,7 +8,7 @@ import { ToastProvider } from './ui';
 
 const NAV: { to: string; label: string; icon: typeof IconHeart; end?: boolean; roles: AdminRole[] }[] = [
   { to: '/admin', label: 'Inicio', icon: IconHeart, end: true, roles: ['ADMIN', 'PLANNER'] },
-  { to: '/admin/invitaciones', label: 'Invitados', icon: IconRings, roles: ['ADMIN', 'PLANNER', 'NOVIOS'] },
+  { to: '/admin/invitaciones', label: 'Invitados', icon: IconRings, roles: ['ADMIN', 'PLANNER', 'NOVIA', 'NOVIO'] },
   { to: '/admin/itinerario', label: 'Itinerario', icon: IconList, roles: ['ADMIN', 'PLANNER'] },
   { to: '/admin/fotos', label: 'Fotos', icon: IconCamera, roles: ['ADMIN'] },
   { to: '/admin/configuracion', label: 'Evento', icon: IconCalendar, roles: ['ADMIN'] },

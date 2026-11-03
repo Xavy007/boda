@@ -4,7 +4,7 @@ import { buildExportWorkbook } from '../../services/export.service.js';
 
 export async function getStats(req: Request, res: Response) {
   const weekAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
-  const [total, sent, opened, byStatus, seats, attending, blockedTotal, blockedWeek, recentBlocked] =
+  const [total, sent, opened, byStatus, seats, attending, bySideStatus, blockedTotal, blockedWeek, recentBlocked] =
     await Promise.all([
       prisma.invitation.count(),
       prisma.invitation.count({ where: { sentAt: { not: null } } }),
@@ -12,6 +12,7 @@ export async function getStats(req: Request, res: Response) {
       prisma.invitation.groupBy({ by: ['status'], _count: { _all: true } }),
       prisma.invitation.aggregate({ _sum: { maxGuests: true } }),
       prisma.invitation.aggregate({ where: { status: 'CONFIRMADO' }, _sum: { attendingCount: true } }),
+      prisma.invitation.groupBy({ by: ['side', 'status'], _count: { _all: true }, _sum: { maxGuests: true, attendingCount: true } }),
       prisma.accessLog.count({ where: { allowed: false } }),
       prisma.accessLog.count({ where: { allowed: false, createdAt: { gte: weekAgo } } }),
       prisma.accessLog.findMany({
@@ -24,6 +25,21 @@ export async function getStats(req: Request, res: Response) {
 
   const count = (s: string) => byStatus.find((b) => b.status === s)?._count._all ?? 0;
 
+  // Reporte por lado: novia, novio, de los dos y sin asignar
+  const bySide = (['NOVIA', 'NOVIO', 'AMBOS', null] as const).map((side) => {
+    const rows = bySideStatus.filter((r) => r.side === side);
+    const of = (status: string) => rows.find((r) => r.status === status);
+    return {
+      side,
+      invitations: rows.reduce((a, r) => a + r._count._all, 0),
+      seats: rows.reduce((a, r) => a + (r._sum.maxGuests ?? 0), 0),
+      attending: of('CONFIRMADO')?._sum.attendingCount ?? 0,
+      confirmed: of('CONFIRMADO')?._count._all ?? 0,
+      rejected: of('RECHAZADO')?._count._all ?? 0,
+      pending: of('PENDIENTE')?._count._all ?? 0,
+    };
+  });
+
   res.json({
     total,
     sent,
@@ -33,6 +49,7 @@ export async function getStats(req: Request, res: Response) {
     pending: count('PENDIENTE'),
     attendingGuests: attending._sum.attendingCount ?? 0,
     seatsAssigned: seats._sum.maxGuests ?? 0,
+    bySide,
     // Los bloqueos (IPs, navegadores) son solo para el administrador
     ...(req.adminRole === 'ADMIN' ? { blockedTotal, blockedWeek, recentBlocked } : { blockedTotal: 0, blockedWeek: 0, recentBlocked: [] }),
   });

@@ -164,34 +164,39 @@ En producción Express sirve el build de React desde `client/dist` (un solo serv
 
 ## Panel de administración (`/admin`)
 
-- **Inicio:** totales, enviadas, abiertas, confirmadas, rechazadas, pendientes, personas vs. cupos y alertas de intentos bloqueados.
+- **Inicio:** totales, enviadas, abiertas, confirmadas, rechazadas, pendientes, personas vs. cupos, **invitados por lado** (novia, novio, de los dos) y alertas de intentos bloqueados.
 - **Fotos:** subida múltiple (arrastrar o seleccionar varias) por sección, con progreso; se optimizan a WebP en 3 tamaños y se guardan en Supabase Storage. Orden por drag & drop (con asa táctil), cambio de sección, descripción y borrado.
 - **Invitados:** búsqueda, filtros (No enviado / Enviado / Abierto / Confirmado / Rechazado / Bloqueado), **Enviar por WhatsApp** (abre `wa.me` con la plantilla y marca `sentAt`), *Reenviar* para quienes no abrieron, copiar link, detalle con quién confirmó, cuántas personas asisten, restricciones alimentarias, mensaje, dispositivos y logs, editar cupos / máx. dispositivos, **liberar dispositivos**, generar link nuevo, importar CSV/Excel y exportar a Excel.
-- **Evento:** nombres, fechas, **cupos por defecto por invitación** (2 al inicio), lugares, coordenadas, textos, dress code, regalos, plantilla de WhatsApp, paleta de colores, música, historia e itinerario.
+- **Evento:** nombres, fechas, **cupos por defecto por invitación** (2 al inicio), padres de los novios, solo adultos, lugares, textos, dress code, regalos, plantilla de WhatsApp, paleta de colores, música e historia.
+- **Itinerario:** horarios del día (administrador y wedding planner).
 
-### Equipo: administrador, wedding planner y novios
+### Equipo: administrador, wedding planner, novia y novio
 
-Panel → Evento → **Equipo** → email, contraseña y rol → *Crear cuenta*. Todos entran por el mismo `/admin/login`. La cuenta creada por el seed (`SEED_ADMIN_EMAIL`) es la de **administrador**.
+Panel → **Equipo** → email, contraseña y rol → *Crear cuenta*. Todos entran por el mismo `/admin/login`. La cuenta creada por el seed (`SEED_ADMIN_EMAIL`) es la de **administrador**.
 
-| | Administrador | Wedding planner | Novios |
+| | Administrador | Wedding planner | Novia / Novio |
 | --- | :-: | :-: | :-: |
 | Crear familias e importar CSV/Excel | ✓ | ✓ | ✓ |
 | Editar nombre, teléfono y email | ✓ | ✓ | ✓ |
 | Ver quién confirmó, cuántas personas, restricciones y mensajes | ✓ | ✓ | — |
 | Enviar links por WhatsApp / copiar link | ✓ | ✓ | — |
 | Reporte (Inicio) y exportar Excel | ✓ | ✓ | — |
+| Itinerario | ✓ | ✓ | — |
+| Elegir de qué lado es el invitado | ✓ | ✓ | — (queda del suyo) |
 | Cambiar cupos o dispositivos, borrar, regenerar links | ✓ | — | — |
 | Fotos, configuración del evento, equipo, accesos y bloqueos | ✓ | — | — |
 
-Los novios no reciben los links privados ni las respuestas (el servidor no se los envía). Los permisos se validan en el servidor (403), y *Quitar acceso* cierra la sesión al instante.
+Lo que carga la novia queda como invitado de la novia, y lo del novio, del novio: así el reporte cuenta cuántos invitados tiene cada uno. La novia y el novio no reciben los links privados ni las respuestas (el servidor no se los envía). *Nueva contraseña* genera una clave nueva, cierra sus sesiones y abre tu correo con el mensaje listo para enviársela. Los permisos se validan en el servidor (403), y *Quitar acceso* cierra la sesión al instante.
 
 ### Importar invitados
 
 Archivo `.csv` (coma o punto y coma) o `.xlsx` con las columnas:
 
 ```
-nombre_familia,telefono,email,cupos
+nombre_familia,telefono,email,cupos,lado
 ```
+
+`lado` es opcional: `novia`, `novio` o `ambos`. Si importa la novia o el novio, se ignora y queda del suyo.
 
 Ver `supabase/invitados-plantilla.csv`. Los teléfonos de 8 dígitos se asumen de Bolivia (+591) al armar el link de WhatsApp.
 

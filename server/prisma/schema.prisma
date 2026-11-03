@@ -26,6 +26,7 @@ model Invitation {
   familyName     String
   /// Invitación a una persona (no a una familia); si tiene más de 1 cupo, va con acompañante
   isPerson       Boolean          @default(false)
+  side           GuestSide?
   contactPhone   String?
   contactEmail   String?
   maxGuests      Int              @default(2)
@@ -131,11 +132,19 @@ model EventSettings {
 }
 
 /// ADMIN: administrador (todo el panel) · PLANNER: wedding planner (confirmaciones, enviar links y reporte)
-/// NOVIOS: solo cargan familias, teléfonos y datos de contacto
+/// NOVIA / NOVIO: solo cargan familias, teléfonos y datos de contacto; sus invitaciones quedan de su lado
 enum AdminRole {
   ADMIN
   PLANNER
-  NOVIOS
+  NOVIA
+  NOVIO
+}
+
+/// De qué lado es el invitado, para el reporte por novia y novio
+enum GuestSide {
+  NOVIA
+  NOVIO
+  AMBOS
 }
 
 model AdminUser {
