@@ -42,6 +42,17 @@ export const invitationCreateSchema = z.object({
   notes: optionalText(2000),
 });
 
+export const teamMemberCreateSchema = z.object({
+  email: z.string().trim().toLowerCase().email('Email inválido').max(160),
+  role: z.enum(['PLANNER', 'NOVIOS']),
+  password: z.string().min(10, 'La contraseña debe tener al menos 10 caracteres').max(200),
+});
+
+/** Datos de contacto: lo que la planner y los novios pueden corregir */
+export const invitationContactSchema = invitationCreateSchema
+  .pick({ familyName: true, contactPhone: true, contactEmail: true })
+  .partial();
+
 export const invitationUpdateSchema = invitationCreateSchema.partial().extend({
   status: z.enum(['PENDIENTE', 'CONFIRMADO', 'RECHAZADO']).optional(),
 });
@@ -77,18 +88,13 @@ export const settingsSchema = z.object({
     }, 'Zona horaria inválida'),
   ceremonyName: z.string().trim().min(1).max(160),
   ceremonyAddress: z.string().trim().min(1).max(300),
-  ceremonyLat: z.coerce.number().min(-90).max(90).optional().nullable(),
-  ceremonyLng: z.coerce.number().min(-180).max(180).optional().nullable(),
   ceremonyMapsUrl: optionalUrl,
   receptionName: z.string().trim().min(1).max(160),
   receptionAddress: z.string().trim().min(1).max(300),
   receptionTime: optionalText(10),
-  receptionLat: z.coerce.number().min(-90).max(90).optional().nullable(),
-  receptionLng: z.coerce.number().min(-180).max(180).optional().nullable(),
   receptionMapsUrl: optionalUrl,
   dressCode: z.string().trim().min(1).max(120),
   dressCodeNote: optionalText(500),
-  dressCodeColors: z.array(hex).max(10).default([]),
   mainPhrase: z.string().trim().min(1).max(300),
   quotePhrase: optionalText(400),
   quoteAuthor: optionalText(120),

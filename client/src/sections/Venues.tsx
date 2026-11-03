@@ -6,14 +6,12 @@ import { timeOf } from '@/lib/format';
 import type { PublicEvent, Venue } from '@/lib/types';
 
 function directionsUrl(v: Venue) {
-  if (v.lat != null && v.lng != null) return `https://www.google.com/maps/dir/?api=1&destination=${v.lat},${v.lng}`;
   if (v.mapsUrl) return v.mapsUrl;
   return `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(v.address)}`;
 }
 
 function embedUrl(v: Venue) {
-  const q = v.lat != null && v.lng != null ? `${v.lat},${v.lng}` : encodeURIComponent(`${v.name}, ${v.address}`);
-  return `https://maps.google.com/maps?q=${q}&z=16&output=embed`;
+  return `https://maps.google.com/maps?q=${encodeURIComponent(`${v.name}, ${v.address}`)}&z=16&output=embed`;
 }
 
 /** Mapa embebido; loading="lazy" evita que cuente en la carga inicial. */

@@ -6,7 +6,6 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { env, isProd } from './config/env.js';
-import { PHOTOS_DIR } from './config/paths.js';
 import { errorHandler } from './middlewares/errorHandler.js';
 import { adminRouter } from './routes/admin.routes.js';
 import { invitationRouter } from './routes/invitation.routes.js';
@@ -56,13 +55,6 @@ export function createApp() {
   app.use('/api', (_req, res) => {
     res.status(404).json({ error: 'NOT_FOUND' });
   });
-
-  // Fotos subidas desde el panel (disco del servidor). Nombres únicos → caché de 1 año
-  fs.mkdirSync(PHOTOS_DIR, { recursive: true });
-  app.use(
-    '/fotos',
-    express.static(PHOTOS_DIR, { index: false, maxAge: '365d', immutable: true, fallthrough: false }),
-  );
 
   // En producción Express sirve el build de React
   if (fs.existsSync(clientDist)) {

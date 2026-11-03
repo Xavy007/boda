@@ -2,7 +2,7 @@ import type { Request, Response } from 'express';
 import { prisma } from '../../lib/prisma.js';
 import { buildExportWorkbook } from '../../services/export.service.js';
 
-export async function getStats(_req: Request, res: Response) {
+export async function getStats(req: Request, res: Response) {
   const weekAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
   const [total, sent, opened, byStatus, seats, attending, blockedTotal, blockedWeek, recentBlocked] =
     await Promise.all([
@@ -33,9 +33,8 @@ export async function getStats(_req: Request, res: Response) {
     pending: count('PENDIENTE'),
     attendingGuests: attending._sum.attendingCount ?? 0,
     seatsAssigned: seats._sum.maxGuests ?? 0,
-    blockedTotal,
-    blockedWeek,
-    recentBlocked,
+    // Los bloqueos (IPs, navegadores) son solo para el administrador
+    ...(req.adminRole === 'ADMIN' ? { blockedTotal, blockedWeek, recentBlocked } : { blockedTotal: 0, blockedWeek: 0, recentBlocked: [] }),
   });
 }
 

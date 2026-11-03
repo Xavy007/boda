@@ -14,7 +14,6 @@ export default defineConfig({
     // En desarrollo, el frontend y la API comparten origen gracias al proxy (cookies sin CORS)
     proxy: {
       '/api': { target: 'http://localhost:4000', changeOrigin: false },
-      '/fotos': { target: 'http://localhost:4000', changeOrigin: false },
     },
   },
   build: {

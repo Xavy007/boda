@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom';
 import { LoadingScreen } from '@/components/LoadingScreen';
 import { api, downloadFile } from '@/lib/api';
 import { fmtDateTime, type Stats } from './types';
-import { PageHeader, useToast } from './ui';
+import { PageHeader, useAdminMe, useToast } from './ui';
 
 function StatCard({ label, value, tone = 'default', hint }: { label: string; value: number | string; tone?: 'default' | 'sage' | 'gold' | 'rose'; hint?: string }) {
   const tones = {
@@ -24,6 +24,8 @@ function StatCard({ label, value, tone = 'default', hint }: { label: string; val
 export default function Dashboard() {
   const [stats, setStats] = useState<Stats | null>(null);
   const toast = useToast();
+  const { role } = useAdminMe();
+  const isAdmin = role === 'ADMIN';
 
   useEffect(() => {
     api<Stats>('/api/admin/stats').then(setStats).catch(() => toast('No se pudieron cargar las estadísticas', 'error'));
@@ -46,7 +48,7 @@ export default function Dashboard() {
         }
       />
 
-      {stats.blockedWeek > 0 && (
+      {isAdmin && stats.blockedWeek > 0 && (
         <div className="mb-6 rounded-3xl border border-red-200 bg-red-50 p-5 text-red-800">
           <p className="font-semibold">⚠️ {stats.blockedWeek} intento(s) bloqueado(s) en los últimos 7 días</p>
           <p className="mt-1 text-sm">Alguien intentó abrir una invitación desde un dispositivo no autorizado. Revisa si es un invitado real y libera sus dispositivos.</p>
@@ -63,7 +65,11 @@ export default function Dashboard() {
         <StatCard label="Pendientes" value={stats.pending} tone="gold" />
         <StatCard label="Confirmadas" value={stats.confirmed} tone="sage" />
         <StatCard label="No asisten" value={stats.rejected} tone="rose" />
-        <StatCard label="Bloqueos" value={stats.blockedTotal} tone={stats.blockedTotal ? 'rose' : 'default'} hint="intentos totales" />
+        {isAdmin ? (
+          <StatCard label="Bloqueos" value={stats.blockedTotal} tone={stats.blockedTotal ? 'rose' : 'default'} hint="intentos totales" />
+        ) : (
+          <StatCard label="Sin responder" value={stats.total - stats.confirmed - stats.rejected} tone="gold" hint="familias" />
+        )}
         <StatCard label="Personas" value={stats.attendingGuests} tone="sage" hint={`de ${stats.seatsAssigned} cupos`} />
       </div>
 
@@ -82,7 +88,7 @@ export default function Dashboard() {
         </div>
       </div>
 
-      {stats.recentBlocked.length > 0 && (
+      {isAdmin && stats.recentBlocked.length > 0 && (
         <div className="card mt-6 !rounded-3xl p-6">
           <p className="font-serif text-2xl">Últimos bloqueos</p>
           <ul className="mt-4 divide-y divide-ink/[0.06]">

@@ -25,8 +25,6 @@ export interface Palette {
 export interface Venue {
   name: string;
   address: string;
-  lat: number | null;
-  lng: number | null;
   mapsUrl: string | null;
   time?: string | null;
 }
@@ -66,7 +64,6 @@ export interface PublicEvent {
   reception: Venue;
   dressCode: string;
   dressCodeNote: string | null;
-  dressCodeColors: string[];
   mainPhrase: string;
   quotePhrase: string | null;
   quoteAuthor: string | null;

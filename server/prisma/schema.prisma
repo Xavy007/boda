@@ -1,6 +1,6 @@
 // Prisma + Supabase (PostgreSQL)
 // La base guarda solo invitaciones, invitados, dispositivos, accesos y la configuración.
-// Las fotos viven en el proyecto (client/public/fotos), ver `npm run fotos`.
+// Las fotos viven en Supabase Storage (bucket `fotos`); la tabla Photo guarda su orden y descripción.
 // - DATABASE_URL: pooler (6543, pgbouncer=true) para las consultas de la app
 // - DIRECT_URL:   conexión directa (5432) para las migraciones
 
@@ -87,21 +87,15 @@ model EventSettings {
 
   ceremonyName    String
   ceremonyAddress String
-  ceremonyLat     Float?
-  ceremonyLng     Float?
   ceremonyMapsUrl String?
 
   receptionName    String
   receptionAddress String
   receptionTime    String?
-  receptionLat     Float?
-  receptionLng     Float?
   receptionMapsUrl String?
 
   dressCode       String
   dressCodeNote   String?
-  /// string[] con colores HEX sugeridos
-  dressCodeColors Json    @default("[]")
 
   mainPhrase    String
   quotePhrase   String?
@@ -129,9 +123,35 @@ model EventSettings {
   updatedAt DateTime @updatedAt
 }
 
+/// ADMIN: administrador (todo el panel) · PLANNER: wedding planner (confirmaciones, enviar links y reporte)
+/// NOVIOS: solo cargan familias, teléfonos y datos de contacto
+enum AdminRole {
+  ADMIN
+  PLANNER
+  NOVIOS
+}
+
 model AdminUser {
-  id           String   @id @default(cuid())
-  email        String   @unique
+  id           String    @id @default(cuid())
+  email        String    @unique
   passwordHash String
-  createdAt    DateTime @default(now())
+  role         AdminRole @default(ADMIN)
+  createdAt    DateTime  @default(now())
+}
+
+/// Fotos de la invitación. Los archivos (WebP) viven en Supabase Storage (bucket `fotos`);
+/// aquí solo se guarda la sección, el orden, la descripción y las URLs.
+model Photo {
+  id          String   @id
+  section     String
+  order       Int      @default(0)
+  alt         String   @default("")
+  width       Int
+  height      Int
+  blurDataUrl String?
+  /// [{ width, url, path }]
+  variants    Json
+  createdAt   DateTime @default(now())
+
+  @@index([section, order])
 }

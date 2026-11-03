@@ -4,7 +4,7 @@ Invitación de boda interactiva **mobile-first** con sobre animado, parallax, RS
 
 **Stack:** Express + TypeScript · Prisma · Supabase (PostgreSQL) · React 18 + Vite · Tailwind · Framer Motion.
 
-La base de datos guarda **solo** las invitaciones (familias, teléfonos, cupos y su respuesta: quién confirmó y cuántas personas van), los dispositivos, los accesos y la configuración del evento. **Las fotos se suben desde el panel y se guardan en el disco del servidor**, no en la base de datos (ver [Fotos](#fotos)).
+La base de datos guarda **solo** las invitaciones (familias, teléfonos, cupos y su respuesta: quién confirmó y cuántas personas van), los dispositivos, los accesos y la configuración del evento. **Las fotos se suben desde el panel y se guardan en Supabase Storage**; la base solo guarda su orden y descripción (ver [Fotos](#fotos)).
 
 ---
 
@@ -15,7 +15,6 @@ boda/
 ├── package.json                 # workspaces: server + client (dev, build, start)
 ├── render.yaml                  # servicio de Render (plan free)
 ├── .github/workflows/deploy.yml # CI + deploy a Render
-├── media/                       # fotos subidas desde el panel + photos.json (se sube a git)
 ├── supabase/
 │   ├── setup.sql                # RLS en todas las tablas e índices
 │   └── invitados-plantilla.csv  # plantilla para importar invitados
@@ -25,12 +24,13 @@ boda/
 │   │   ├── schema.prisma        # url = DATABASE_URL (pooler) · directUrl = DIRECT_URL
 │   │   ├── migrations/          # migración inicial
 │   │   └── seed.ts              # admin + evento de ejemplo + 5 invitaciones
+│   ├── scripts/migrar-fotos.ts  # sube a Supabase las fotos del sistema anterior (media/)
 │   └── src/
 │       ├── app.ts · index.ts
 │       ├── config/              # env (validado con Zod), cookies
-│       ├── lib/                 # prisma.ts
+│       ├── lib/                 # prisma.ts, storage.ts (Supabase Storage)
 │       ├── middlewares/         # invitationAccess (token + dispositivo), requireAdmin, rateLimits, upload, errorHandler
-│       ├── services/            # device, event, calendar (.ics + links), photo (sharp → disco), import, export, token
+│       ├── services/            # device, event, calendar (.ics + links), photo (sharp → Supabase Storage), import, export, token
 │       ├── controllers/         # invitación pública + admin/*
 │       ├── routes/              # /api/invitation, /api/photos, /api/admin
 │       ├── schemas/             # Zod
@@ -56,7 +56,9 @@ boda/
    - **Session pooler** o **Direct connection** (puerto **5432**) → `DIRECT_URL`.
    - Reemplaza `[YOUR-PASSWORD]` por tu contraseña (si tiene caracteres especiales, codifícalos en URL).
 
-> No necesitas Supabase Storage ni la service role key: las fotos no van a Supabase.
+3. **Fotos:** *Project Settings → API Keys* → copia la **Secret key** (`sb_secret_…`) → `SUPABASE_SECRET_KEY`, y la **Project URL** (`https://xxxx.supabase.co`) → `SUPABASE_URL`. El bucket público `fotos` se crea solo con la primera foto.
+
+> La secret key da acceso total al proyecto: va solo en `server/.env` y en Render, nunca en el frontend ni en git.
 
 ## 2. Variables de entorno
 
@@ -77,7 +79,7 @@ node -e "console.log(require('crypto').randomBytes(48).toString('hex'))"
 | `JWT_SECRET` / `COOKIE_SECRET` | ≥ 32 caracteres aleatorios |
 | `CLIENT_URL` | Dominio público (`http://localhost:5173` en desarrollo) |
 | `PORT` | `4000` |
-| `MEDIA_DIR` | Carpeta de las fotos subidas (por defecto `./media`, que se guarda en git) |
+| `SUPABASE_URL` / `SUPABASE_SECRET_KEY` | Supabase Storage para las fotos (paso 1) |
 | `SEED_ADMIN_EMAIL` / `SEED_ADMIN_PASSWORD` | Admin inicial creado por el seed |
 
 ## 3. Base de datos
@@ -129,6 +131,7 @@ En producción Express sirve el build de React desde `client/dist` (un solo serv
 1. **Render** → [dashboard.render.com](https://dashboard.render.com) → **New → Blueprint** → conecta GitHub y elige el repo `boda`. Render lee `render.yaml` (plan **free**).
 2. Cuando te pida las variables, completa:
    - `DATABASE_URL` y `DIRECT_URL`: las de Supabase (paso 1).
+   - `SUPABASE_URL` y `SUPABASE_SECRET_KEY`: las de Supabase (paso 1), para las fotos.
    - `CLIENT_URL`: la URL que te da Render, en este proyecto `https://boda-hsbh.onrender.com` (sin `/` al final; si cambia, corrígela en *Environment*).
    - `JWT_SECRET` y `COOKIE_SECRET` se generan solos.
 3. En el servicio → **Settings → Deploy Hook** → copia la URL.
@@ -143,7 +146,7 @@ En producción Express sirve el build de React desde `client/dist` (un solo serv
 ### Limitaciones del plan gratis de Render
 
 - El servicio **se duerme tras 15 min sin visitas**; la primera visita después tarda ~30–60 s en despertar. Para el día del envío puedes abrir el link antes o usar un monitor gratuito (p. ej. UptimeRobot a `/api/health` cada 10 min).
-- **El disco no es permanente:** lo que se escribe en el servidor se pierde en cada deploy o reinicio. Por eso las fotos se manejan así (ver [Fotos](#fotos)): súbelas desde el panel **en tu computadora**, y luego `git add media && git commit && git push`.
+- **El disco no es permanente:** lo que se escribe en el servidor se pierde en cada deploy o reinicio. Por eso las fotos van a Supabase Storage y no al disco.
 
 > `CLIENT_URL` debe ser exactamente el dominio público: se usa para CORS, para armar los links de WhatsApp y para la URL absoluta de la imagen Open Graph.
 
@@ -162,9 +165,25 @@ En producción Express sirve el build de React desde `client/dist` (un solo serv
 ## Panel de administración (`/admin`)
 
 - **Inicio:** totales, enviadas, abiertas, confirmadas, rechazadas, pendientes, personas vs. cupos y alertas de intentos bloqueados.
-- **Fotos:** subida múltiple (arrastrar o seleccionar varias) por sección, con progreso; se optimizan a WebP en 3 tamaños y se guardan en el disco del servidor. Orden por drag & drop (con asa táctil), cambio de sección, descripción y borrado.
+- **Fotos:** subida múltiple (arrastrar o seleccionar varias) por sección, con progreso; se optimizan a WebP en 3 tamaños y se guardan en Supabase Storage. Orden por drag & drop (con asa táctil), cambio de sección, descripción y borrado.
 - **Invitados:** búsqueda, filtros (No enviado / Enviado / Abierto / Confirmado / Rechazado / Bloqueado), **Enviar por WhatsApp** (abre `wa.me` con la plantilla y marca `sentAt`), *Reenviar* para quienes no abrieron, copiar link, detalle con quién confirmó, cuántas personas asisten, restricciones alimentarias, mensaje, dispositivos y logs, editar cupos / máx. dispositivos, **liberar dispositivos**, generar link nuevo, importar CSV/Excel y exportar a Excel.
 - **Evento:** nombres, fechas, **cupos por defecto por invitación** (2 al inicio), lugares, coordenadas, textos, dress code, regalos, plantilla de WhatsApp, paleta de colores, música, historia e itinerario.
+
+### Equipo: administrador, wedding planner y novios
+
+Panel → Evento → **Equipo** → email, contraseña y rol → *Crear cuenta*. Todos entran por el mismo `/admin/login`. La cuenta creada por el seed (`SEED_ADMIN_EMAIL`) es la de **administrador**.
+
+| | Administrador | Wedding planner | Novios |
+| --- | :-: | :-: | :-: |
+| Crear familias e importar CSV/Excel | ✓ | ✓ | ✓ |
+| Editar nombre, teléfono y email | ✓ | ✓ | ✓ |
+| Ver quién confirmó, cuántas personas, restricciones y mensajes | ✓ | ✓ | — |
+| Enviar links por WhatsApp / copiar link | ✓ | ✓ | — |
+| Reporte (Inicio) y exportar Excel | ✓ | ✓ | — |
+| Cambiar cupos o dispositivos, borrar, regenerar links | ✓ | — | — |
+| Fotos, configuración del evento, equipo, accesos y bloqueos | ✓ | — | — |
+
+Los novios no reciben los links privados ni las respuestas (el servidor no se los envía). Los permisos se validan en el servidor (403), y *Quitar acceso* cierra la sesión al instante.
 
 ### Importar invitados
 
@@ -185,12 +204,11 @@ El invitado elige **"¡Sí, asistiremos!"** o **"No podremos asistir"**, escribe
 
 ## Fotos
 
-Las fotos **no se guardan en la base de datos**. Se suben desde el panel y quedan en el **disco del servidor**:
+Las fotos se suben desde el panel (local o publicado, da igual) y quedan en **Supabase Storage**, así no se pierden aunque Render borre su disco:
 
 ```
-media/
-├── fotos/<id>-480.webp, <id>-960.webp, <id>-1600.webp   # versiones optimizadas
-└── photos.json                                           # sección, orden y descripción de cada foto
+Supabase Storage, bucket "fotos" (público)  → <id>-480.webp, <id>-960.webp, <id>-1600.webp
+Tabla Photo (Postgres)                      → sección, orden, descripción y URLs de cada foto
 ```
 
 **Cómo subirlas:** Panel → **Fotos** → elige la sección → **Seleccionar fotos** (puedes elegir muchas a la vez o arrastrarlas). Cada foto se convierte a WebP en 3 tamaños con miniatura borrosa. Luego puedes ordenarlas arrastrando el asa ⋮⋮, moverlas de sección, editar su descripción o eliminarlas.
@@ -204,14 +222,7 @@ media/
 
 Si una sección está vacía, la invitación muestra fotos de ejemplo de Unsplash.
 
-> ⚠️ **Plan gratis de Render: sube las fotos en local.** El disco del servidor gratis se borra en cada deploy o reinicio, así que la carpeta `media/` se guarda en git:
->
-> 1. Sube y ordena las fotos en el panel de tu computadora (`http://localhost:5173/admin/fotos`).
-> 2. `git add media && git commit -m "Fotos" && git push`
-> 3. GitHub Actions despliega y las fotos quedan publicadas.
->
-> No subas fotos desde el panel del sitio publicado: se perderían en el siguiente reinicio.
-> Si en el futuro usas un plan con disco permanente, define `MEDIA_DIR` apuntando a ese disco (p. ej. `/var/data/media`).
+> **¿Tenías fotos en `media/` (versión anterior)?** Súbelas a Supabase una sola vez con `npm run fotos:migrar -w server`. Conservan su sección, orden y descripción; repetirlo no duplica nada.
 
 > Las fotos HEIC del iPhone a veces no se pueden leer: expórtalas como JPG.
 
