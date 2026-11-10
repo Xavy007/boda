@@ -18,7 +18,15 @@ const FILTERS: { value: Filter; label: string }[] = [
   { value: 'BLOQUEADO', label: 'Bloqueado' },
 ];
 
-const normalize = (s: string) => s.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '');
+type SideFilter = 'TODOS' | GuestSide | 'SIN_LADO';
+
+const SIDE_FILTERS: { value: SideFilter; label: string }[] = [
+  { value: 'TODOS', label: 'Todos los lados' },
+  ...(Object.keys(SIDE_LABELS) as GuestSide[]).map((s) => ({ value: s, label: SIDE_LABELS[s] })),
+  { value: 'SIN_LADO', label: 'Sin asignar' },
+];
+
+const normalize =(s: string) => s.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '');
 
 export default function Invitations() {
   const toast = useToast();
@@ -27,6 +35,7 @@ export default function Invitations() {
   const canSend = !isCouple(role);
   const [items, setItems] = useState<AdminInvitation[] | null>(null);
   const [filter, setFilter] = useState<Filter>('TODOS');
+  const [sideFilter, setSideFilter] = useState<SideFilter>('TODOS');
   const [query, setQuery] = useState('');
   const [detailId, setDetailId] = useState<string | null>(null);
   const [contactFor, setContactFor] = useState<AdminInvitation | null>(null);
@@ -53,18 +62,28 @@ export default function Invitations() {
     const q = normalize(query.trim());
     return items.filter((i) => {
       if (q && !normalize(i.familyName).includes(q)) return false;
+      if (sideFilter !== 'TODOS' && (i.side ?? 'SIN_LADO') !== sideFilter) return false;
       if (filter === 'TODOS') return true;
       if (filter === 'BLOQUEADO') return i.blockedCount > 0;
       return i.displayStatus === filter;
     });
-  }, [items, filter, query]);
+  }, [items, filter, sideFilter, query]);
 
+  // Los conteos por estado respetan el lado elegido, y los de lado cuentan todas
   const counts = useMemo(() => {
-    const c: Record<string, number> = { TODOS: items?.length ?? 0, BLOQUEADO: 0 };
+    const c: Record<string, number> = { TODOS: 0, BLOQUEADO: 0 };
     for (const i of items ?? []) {
+      if (sideFilter !== 'TODOS' && (i.side ?? 'SIN_LADO') !== sideFilter) continue;
+      c.TODOS++;
       c[i.displayStatus] = (c[i.displayStatus] ?? 0) + 1;
       if (i.blockedCount) c.BLOQUEADO++;
     }
+    return c;
+  }, [items, sideFilter]);
+
+  const sideCounts = useMemo(() => {
+    const c: Record<string, number> = { TODOS: items?.length ?? 0 };
+    for (const i of items ?? []) c[i.side ?? 'SIN_LADO'] = (c[i.side ?? 'SIN_LADO'] ?? 0) + 1;
     return c;
   }, [items]);
 
@@ -118,6 +137,18 @@ export default function Invitations() {
         onChange={(e) => setQuery(e.target.value)}
         aria-label="Buscar invitación"
       />
+      <div className="no-scrollbar -mx-4 mt-3 flex gap-2 overflow-x-auto px-4 pb-1">
+        {SIDE_FILTERS.filter((f) => f.value === 'TODOS' || sideCounts[f.value]).map((f) => (
+          <button
+            key={f.value}
+            type="button"
+            onClick={() => setSideFilter(f.value)}
+            className={`min-h-[40px] shrink-0 rounded-full px-4 text-sm font-medium transition ${sideFilter === f.value ? 'bg-gold text-white' : 'bg-white text-ink/70 ring-1 ring-ink/10'}`}
+          >
+            {f.label} <span className="opacity-60">{sideCounts[f.value] ?? 0}</span>
+          </button>
+        ))}
+      </div>
       {canSend && (
         <div className="no-scrollbar -mx-4 mt-3 flex gap-2 overflow-x-auto px-4 pb-1">
           {FILTERS.filter((f) => isAdmin || f.value !== 'BLOQUEADO').map((f) => (
