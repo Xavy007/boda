@@ -72,6 +72,8 @@ export default function Photos() {
     if (!files.length) return toast('Selecciona imágenes (JPG, PNG, WEBP)', 'error');
     setProgress({ done: 0, total: files.length });
     const failed: string[] = [];
+    // El motivo del primer error, para que se vea qué pasó (configuración, formato, tamaño…)
+    let reason = '';
     for (let i = 0; i < files.length; i += BATCH) {
       const form = new FormData();
       form.append('section', section);
@@ -79,9 +81,11 @@ export default function Photos() {
       try {
         const res = await api<{ created: number; failed: { name: string; message: string }[] }>('/api/admin/photos', { method: 'POST', body: form });
         failed.push(...res.failed.map((f) => f.name));
+        reason ||= res.failed[0]?.message ?? '';
       } catch (err) {
-        const body = err instanceof ApiError ? (err.body.failed as { name: string }[] | undefined) : undefined;
+        const body = err instanceof ApiError ? (err.body.failed as { name: string; message: string }[] | undefined) : undefined;
         failed.push(...(body?.map((f) => f.name) ?? files.slice(i, i + BATCH).map((f) => f.name)));
+        reason ||= body?.[0]?.message ?? (err instanceof Error ? err.message : '');
       }
       setProgress({ done: Math.min(i + BATCH, files.length), total: files.length });
     }
@@ -89,7 +93,9 @@ export default function Photos() {
     if (inputRef.current) inputRef.current.value = '';
     const ok = files.length - failed.length;
     if (ok) toast(`${ok} foto(s) subida(s) a ${SECTIONS.find((s) => s.value === section)?.label}`);
-    if (failed.length) toast(`No se pudieron subir: ${failed.slice(0, 3).join(', ')}${failed.length > 3 ? '…' : ''}`, 'error');
+    if (failed.length) {
+      toast(`No se pudieron subir: ${failed.slice(0, 3).join(', ')}${failed.length > 3 ? '…' : ''}${reason ? ` — ${reason}` : ''}`, 'error');
+    }
     load();
   };
 
