@@ -6,7 +6,7 @@ import { getSettings } from '../../services/event.service.js';
 import { importInvitations } from '../../services/import.service.js';
 import { generateToken, invitationUrl } from '../../services/token.service.js';
 import { HttpError } from '../../utils/http.js';
-import { cleanFamilyName, toWhatsappNumber } from '../../utils/phone.js';
+import { cleanFamilyName, whatsappLink } from '../../utils/phone.js';
 
 type DisplayStatus = 'NO_ENVIADO' | 'ENVIADO' | 'ABIERTO' | 'CONFIRMADO' | 'RECHAZADO';
 
@@ -63,7 +63,6 @@ export async function listInvitations(req: Request, res: Response) {
   res.json(
     invitations.map((inv) => {
       const text = fillTemplate(settings.whatsappTemplate, inv);
-      const number = toWhatsappNumber(inv.contactPhone);
       return {
         id: inv.id,
         token: canSend ? inv.token : null,
@@ -89,7 +88,7 @@ export async function listInvitations(req: Request, res: Response) {
         deviceCount: inv._count.devices,
         blockedCount: blockedMap.get(inv.id) ?? 0,
         link: canSend ? invitationUrl(inv.token) : null,
-        whatsappUrl: canSend && number ? `https://wa.me/${number}?text=${encodeURIComponent(text)}` : null,
+        whatsappUrl: canSend ? whatsappLink(inv.contactPhone, text) : null,
         whatsappText: canSend ? text : null,
         createdAt: inv.createdAt,
       };

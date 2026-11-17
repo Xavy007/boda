@@ -10,10 +10,14 @@ export function toWhatsappNumber(phone: string | null | undefined): string | nul
   return digits.replace(/^00/, '');
 }
 
+/**
+ * Link para abrir WhatsApp con el mensaje escrito. Va directo a api.whatsapp.com y no a wa.me:
+ * la redirección de wa.me cambia los emojis (💍) por "�".
+ */
 export function whatsappLink(phone: string | null | undefined, text: string): string | null {
   const number = toWhatsappNumber(phone);
   if (!number) return null;
-  return `https://wa.me/${number}?text=${encodeURIComponent(text)}`;
+  return `https://api.whatsapp.com/send?phone=${number}&text=${encodeURIComponent(text)}`;
 }
 
 /** "Familia Pérez" → "Pérez" (para saludar "Querida familia Pérez" sin duplicar). */

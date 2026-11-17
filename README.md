@@ -166,7 +166,7 @@ En producción Express sirve el build de React desde `client/dist` (un solo serv
 
 - **Inicio:** totales, enviadas, abiertas, confirmadas, rechazadas, pendientes, personas vs. cupos, **invitados por lado** (novia, novio, de los dos) y alertas de intentos bloqueados.
 - **Fotos:** subida múltiple (arrastrar o seleccionar varias) por sección, con progreso; se optimizan a WebP en 3 tamaños y se guardan en Supabase Storage. Orden por drag & drop (con asa táctil), cambio de sección, descripción y borrado.
-- **Invitados:** búsqueda, filtros (No enviado / Enviado / Abierto / Confirmado / Rechazado / Bloqueado), **Enviar por WhatsApp** (abre `wa.me` con la plantilla y marca `sentAt`), *Reenviar* para quienes no abrieron, copiar link, detalle con quién confirmó, cuántas personas asisten, restricciones alimentarias, mensaje, dispositivos y logs, editar cupos / máx. dispositivos, **liberar dispositivos**, generar link nuevo, importar CSV/Excel y exportar a Excel.
+- **Invitados:** búsqueda, filtros (No enviado / Enviado / Abierto / Confirmado / Rechazado / Bloqueado), **Enviar por WhatsApp** (abre `api.whatsapp.com/send` con la plantilla; no `wa.me`, que rompe los emojis y marca `sentAt`), *Reenviar* para quienes no abrieron, copiar link, detalle con quién confirmó, cuántas personas asisten, restricciones alimentarias, mensaje, dispositivos y logs, editar cupos / máx. dispositivos, **liberar dispositivos**, generar link nuevo, importar CSV/Excel y exportar a Excel.
 - **Evento:** nombres, fechas, **cupos por defecto por invitación** (2 al inicio), padres de los novios, solo adultos, lugares, textos, dress code, regalos, plantilla de WhatsApp, paleta de colores, música e historia.
 - **Itinerario:** horarios del día (administrador y wedding planner).
 
