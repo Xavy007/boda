@@ -31,6 +31,9 @@ export const SIDE_LABELS: Record<GuestSide, string> = {
 /** La novia y el novio solo cargan datos, y sus invitados quedan de su lado */
 export const isCouple = (role: AdminRole) => role === 'NOVIA' || role === 'NOVIO';
 
+/** Quién ve y marca los regalos recibidos: todos menos la planner */
+export const canSeeGifts = (role: AdminRole) => role !== 'PLANNER';
+
 export type DisplayStatus = 'NO_ENVIADO' | 'ENVIADO' | 'ABIERTO' | 'CONFIRMADO' | 'RECHAZADO';
 
 /** token, link, whatsapp* y la respuesta llegan vacíos para los novios (solo cargan datos) */
@@ -54,6 +57,9 @@ export interface AdminInvitation {
   attendingCount: number;
   dietaryNotes: string | null;
   message: string | null;
+  /** Solo llega para el administrador y los novios */
+  giftReceivedAt: string | null;
+  giftNote: string | null;
   deviceCount: number;
   blockedCount: number;
   link: string | null;

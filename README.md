@@ -183,6 +183,7 @@ Panel → **Equipo** → email, contraseña y rol → *Crear cuenta*. Todos entr
 | Reporte (Inicio) y exportar Excel | ✓ | ✓ | — |
 | Itinerario | ✓ | ✓ | — |
 | Elegir de qué lado es el invitado | ✓ | ✓ | — (queda del suyo) |
+| Marcar y ver regalos recibidos (🎁) | ✓ | — | ✓ (sus invitados) |
 | Cambiar cupos o dispositivos, borrar, regenerar links | ✓ | — | — |
 | Fotos, configuración del evento, equipo, accesos y bloqueos | ✓ | — | — |
 
@@ -202,7 +203,7 @@ Ver `supabase/invitados-plantilla.csv`. Los teléfonos de 8 dígitos se asumen d
 
 ## Confirmación de asistencia (RSVP)
 
-El invitado elige **"¡Sí, asistiremos!"** o **"No podremos asistir"**, escribe **su nombre** (una sola persona responde por la familia) y, si asisten, elige **cuántas personas** van: de 1 hasta los cupos de su invitación. Opcionalmente agrega restricciones alimentarias y un mensaje.
+El invitado elige **"¡Sí, asistiremos!"** o **"No podremos asistir"** (no escribe su nombre: la invitación ya identifica a la familia o persona) y, si asisten, elige **cuántas personas** van: de 1 hasta los cupos de su invitación. Opcionalmente agrega restricciones alimentarias y un mensaje. Al confirmar por primera vez se abre solo el calendario del dispositivo (Google Calendar en Android, "Agregar evento" con el `.ics` en iPhone y computadoras); los botones de calendario siguen disponibles por si el navegador lo bloquea.
 
 - **Cupos por defecto:** Panel → Evento → *Cupos por defecto por invitación* (2 al inicio). Se usan al crear o importar invitaciones sin cupos.
 - **Cupos de una familia en particular:** Panel → Invitados → Detalle → *Editar cupos / dispositivos*, o la columna `cupos` del CSV.

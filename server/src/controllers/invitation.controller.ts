@@ -52,7 +52,7 @@ export async function submitRsvp(req: Request, res: Response) {
     data: {
       status: body.attending ? 'CONFIRMADO' : 'RECHAZADO',
       confirmedAt: new Date(),
-      respondentName: body.name,
+      respondentName: body.name ?? cleanFamilyName(inv.familyName),
       attendingCount: body.attending ? body.count : 0,
       dietaryNotes: body.attending ? body.dietaryNotes : null,
       message: body.message,

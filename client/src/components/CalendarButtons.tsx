@@ -2,13 +2,29 @@ import { getFingerprint } from '@/lib/fingerprint';
 import type { InvitationData } from '@/lib/types';
 import { IconCalendar } from './Icons';
 
-export function CalendarButtons({ calendar }: { calendar: InvitationData['calendar'] }) {
-  // El .ics pasa por el mismo control de dispositivo: se agrega el fingerprint por si se perdió la cookie
-  const downloadIcs = async () => {
-    const fp = await getFingerprint();
-    window.location.href = fp ? `${calendar.ics}?fp=${fp}` : calendar.ics;
-  };
+type Calendar = InvitationData['calendar'];
 
+// El .ics pasa por el mismo control de dispositivo: se agrega el fingerprint por si se perdió la cookie
+async function downloadIcs(calendar: Calendar) {
+  const fp = await getFingerprint();
+  window.location.href = fp ? `${calendar.ics}?fp=${fp}` : calendar.ics;
+}
+
+/**
+ * Al confirmar, abre directamente el calendario que corresponde al dispositivo:
+ * Android → Google Calendar; iPhone, Mac y computadoras → .ics (abre "Agregar evento").
+ * El navegador no permite agregarlo sin que la persona lo acepte; si bloquea la ventana,
+ * los botones siguen disponibles.
+ */
+export function autoAddToCalendar(calendar: Calendar) {
+  if (/android/i.test(navigator.userAgent)) {
+    window.open(calendar.google, '_blank', 'noopener');
+  } else {
+    void downloadIcs(calendar);
+  }
+}
+
+export function CalendarButtons({ calendar }: { calendar: Calendar }) {
   return (
     <div className="w-full">
       <p className="eyebrow mb-3 flex items-center justify-center gap-2">
@@ -18,7 +34,7 @@ export function CalendarButtons({ calendar }: { calendar: InvitationData['calend
         <a href={calendar.google} target="_blank" rel="noopener noreferrer" className="btn-outline w-full">
           Google Calendar
         </a>
-        <button type="button" onClick={downloadIcs} className="btn-outline w-full">
+        <button type="button" onClick={() => downloadIcs(calendar)} className="btn-outline w-full">
           Apple / iPhone
         </button>
         <a href={calendar.outlook} target="_blank" rel="noopener noreferrer" className="btn-outline w-full">

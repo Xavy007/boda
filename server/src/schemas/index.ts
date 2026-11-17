@@ -13,7 +13,8 @@ const optionalText = (max: number) =>
 export const rsvpSchema = z
   .object({
     attending: z.boolean(),
-    name: z.string().trim().min(3, 'Escribe tu nombre completo').max(120),
+    // Opcional: la invitación ya identifica a quién responde
+    name: optionalText(120),
     count: z.number().int().min(0).max(30).default(1),
     dietaryNotes: optionalText(300),
     message: optionalText(1000),
@@ -21,6 +22,13 @@ export const rsvpSchema = z
   .strict();
 
 // ── Admin ──────────────────────────────────────────────────────────────────
+export const invitationGiftSchema = z
+  .object({
+    received: z.boolean(),
+    note: optionalText(200),
+  })
+  .strict();
+
 export const loginSchema = z.object({
   email: z.string().trim().toLowerCase().email('Email inválido'),
   password: z.string().min(1, 'Contraseña obligatoria').max(200),

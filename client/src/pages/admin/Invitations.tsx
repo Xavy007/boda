@@ -3,7 +3,7 @@ import { IconCopy, IconWhatsapp } from '@/components/Icons';
 import { api, ApiError, downloadFile } from '@/lib/api';
 import { canPickContacts, isMobileDevice, parseVcard, pickContact, type PickedContact } from '@/lib/contacts';
 import { copyText } from '@/lib/format';
-import { fmtDateTime, type AdminInvitation, type DisplayStatus, type InvitationDetail, SIDE_LABELS, isCouple, type GuestSide } from './types';
+import { canSeeGifts, fmtDateTime, type AdminInvitation, type DisplayStatus, type InvitationDetail, SIDE_LABELS, isCouple, type GuestSide } from './types';
 import { EmptyState, Field, Modal, PageHeader, StatusBadge, useAdminMe, useToast } from './ui';
 
 type Filter = 'TODOS' | DisplayStatus | 'BLOQUEADO';
@@ -33,6 +33,8 @@ export default function Invitations() {
   const { role } = useAdminMe();
   const isAdmin = role === 'ADMIN';
   const canSend = !isCouple(role);
+  const showGifts = canSeeGifts(role);
+  const [giftFor, setGiftFor] = useState<AdminInvitation | null>(null);
   const [items, setItems] = useState<AdminInvitation[] | null>(null);
   const [filter, setFilter] = useState<Filter>('TODOS');
   const [sideFilter, setSideFilter] = useState<SideFilter>('TODOS');
@@ -115,7 +117,12 @@ export default function Invitations() {
     <>
       <PageHeader
         title="Invitaciones"
-        subtitle={items ? `${items.length} familias · ${items.reduce((a, i) => a + i.maxGuests, 0)} cupos` : undefined}
+        subtitle={
+          items
+            ? `${items.length} familias · ${items.reduce((a, i) => a + i.maxGuests, 0)} cupos` +
+              (showGifts ? ` · ${items.filter((i) => i.giftReceivedAt).length} regalos recibidos` : '')
+            : undefined
+        }
         actions={
           <>
             <button type="button" className="btn-primary" onClick={() => setCreating(true)}>+ Nueva</button>
@@ -172,7 +179,12 @@ export default function Invitations() {
             <div className="flex flex-wrap items-start justify-between gap-3">
               <button type="button" onClick={() => (isAdmin ? setDetailId(inv.id) : setContactFor(inv))} className="min-w-0 text-left">
                 <p className="truncate font-serif text-2xl leading-tight hover:text-gold">{inv.familyName}</p>
-                {inv.side && <span className="mt-1 inline-block rounded-full bg-ink/5 px-2.5 py-0.5 text-[11px] font-semibold text-ink/60">{SIDE_LABELS[inv.side]}</span>}
+                {inv.side && <span className="mr-1.5 mt-1 inline-block rounded-full bg-ink/5 px-2.5 py-0.5 text-[11px] font-semibold text-ink/60">{SIDE_LABELS[inv.side]}</span>}
+                {showGifts && inv.giftReceivedAt && (
+                  <span className="mt-1 inline-block rounded-full bg-gold/15 px-2.5 py-0.5 text-[11px] font-semibold text-gold" title={inv.giftNote ?? undefined}>
+                    🎁 Regalo recibido
+                  </span>
+                )}
                 <p className="mt-1 text-xs text-ink/50">
                   {canSend && inv.status === 'CONFIRMADO' ? `${inv.attendingCount} de ${inv.maxGuests} asisten${inv.respondentName ? ` (${inv.respondentName})` : ''}` : `${inv.maxGuests} cupos`}
                   {isAdmin && ` · ${inv.deviceCount}/${inv.maxDevices} dispositivos`}
@@ -207,6 +219,11 @@ export default function Invitations() {
                   {inv.respondentName ? 'Ver respuesta' : inv.contactPhone ? 'Editar datos' : '+ Agregar teléfono'}
                 </button>
               )}
+              {showGifts && (
+                <button type="button" onClick={() => setGiftFor(inv)} className="btn-outline min-h-[44px] px-4">
+                  🎁 {inv.giftReceivedAt ? 'Regalo' : 'Marcar regalo'}
+                </button>
+              )}
             </div>
           </article>
         ))}
@@ -219,6 +236,15 @@ export default function Invitations() {
           setContactFor(null);
           toast('Datos guardados');
           load();
+        }}
+      />
+      <GiftModal
+        invitation={giftFor}
+        onClose={() => setGiftFor(null)}
+        onSaved={(id, gift) => {
+          setGiftFor(null);
+          setItems((prev) => prev?.map((i) => (i.id === id ? { ...i, ...gift } : i)) ?? null);
+          toast(gift.giftReceivedAt ? 'Regalo marcado como recibido' : 'Regalo desmarcado');
         }}
       />
       <DetailModal id={detailId} onClose={() => setDetailId(null)} onChanged={load} />
@@ -464,6 +490,57 @@ function ContactModal({ invitation, onClose, onSaved }: { invitation: AdminInvit
         </Field>
         {error && <p className="rounded-xl bg-red-50 px-4 py-3 text-sm text-red-700">{error}</p>}
         <button type="submit" className="btn-primary" disabled={saving}>{saving ? 'Guardando…' : 'Guardar'}</button>
+      </form>
+    </Modal>
+  );
+}
+
+// ── Regalo recibido (administrador y novios) ─────────────────────────────────
+type GiftState = Pick<AdminInvitation, 'giftReceivedAt' | 'giftNote'>;
+
+function GiftModal({ invitation, onClose, onSaved }: { invitation: AdminInvitation | null; onClose: () => void; onSaved: (id: string, gift: GiftState) => void }) {
+  const [note, setNote] = useState('');
+  const [error, setError] = useState<string | null>(null);
+  const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    setNote(invitation?.giftNote ?? '');
+    setError(null);
+  }, [invitation]);
+
+  const save = async (received: boolean) => {
+    if (!invitation) return;
+    setSaving(true);
+    setError(null);
+    try {
+      const gift = await api<GiftState>(`/api/admin/invitations/${invitation.id}/gift`, { method: 'PUT', body: { received, note: note.trim() || null } });
+      onSaved(invitation.id, gift);
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : 'Error al guardar');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const received = Boolean(invitation?.giftReceivedAt);
+  return (
+    <Modal open={Boolean(invitation)} onClose={onClose} title={invitation?.familyName ?? ''}>
+      <form onSubmit={(e) => (e.preventDefault(), save(true))} className="grid gap-4">
+        <p className="text-sm text-ink/65">
+          {received ? `🎁 Regalo recibido · marcado el ${fmtDateTime(invitation?.giftReceivedAt ?? null)}` : 'Aún no se marcó ningún regalo de esta invitación.'}
+        </p>
+        <Field label="Nota (opcional)" hint="Qué regalaron o cómo: transferencia, regalo de la lista, sobre…">
+          <input className="input" value={note} onChange={(e) => setNote(e.target.value)} maxLength={200} placeholder="Transferencia del 10/12" autoFocus />
+        </Field>
+        {error && <p className="rounded-xl bg-red-50 px-4 py-3 text-sm text-red-700">{error}</p>}
+        <button type="submit" className="btn-primary" disabled={saving}>
+          {saving ? 'Guardando…' : received ? 'Guardar nota' : 'Marcar regalo recibido'}
+        </button>
+        {received && (
+          <button type="button" className="btn border border-red-200 text-red-600" disabled={saving} onClick={() => save(false)}>
+            Quitar marca de regalo
+          </button>
+        )}
       </form>
     </Modal>
   );

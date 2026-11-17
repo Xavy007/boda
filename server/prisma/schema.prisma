@@ -41,6 +41,9 @@ model Invitation {
   attendingCount Int              @default(0)
   dietaryNotes   String?
   message        String?
+  /// Regalo recibido: lo marcan a mano el administrador o los novios (la planner no lo ve)
+  giftReceivedAt DateTime?
+  giftNote       String?
   notes          String?
   createdAt      DateTime         @default(now())
   updatedAt      DateTime         @updatedAt

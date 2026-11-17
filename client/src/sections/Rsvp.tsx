@@ -1,6 +1,6 @@
 import { AnimatePresence, motion } from 'framer-motion';
 import { useState, type FormEvent } from 'react';
-import { CalendarButtons } from '@/components/CalendarButtons';
+import { autoAddToCalendar, CalendarButtons } from '@/components/CalendarButtons';
 import { Celebration, RingsMark } from '@/components/Celebration';
 import { IconWhatsapp } from '@/components/Icons';
 import { SectionHeading } from '@/components/Ornaments';
@@ -73,9 +73,12 @@ export function Rsvp({ token, data, onUpdate }: Props) {
                 token={token}
                 data={data}
                 onSaved={(next) => {
+                  const justConfirmed = next.invitation.status === 'CONFIRMADO' && invitation.status !== 'CONFIRMADO';
                   onUpdate(next);
                   setEditing(false);
                   setCelebrate(next.invitation.status === 'CONFIRMADO');
+                  // Solo la primera vez que confirman (no al editar una confirmación)
+                  if (justConfirmed) autoAddToCalendar(next.calendar);
                 }}
                 onCancel={responded ? () => setEditing(false) : undefined}
               />
@@ -128,7 +131,7 @@ function Summary({ data }: { data: InvitationData }) {
       <div className="text-center">
         <p className="font-script text-5xl text-gold">Los extrañaremos</p>
         <p className="mt-4 text-[15px] leading-relaxed text-ink/70">
-          Gracias por avisarnos{invitation.respondentName ? `, ${invitation.respondentName.split(' ')[0]}` : ''}. Lamentamos que no puedan
+          Gracias por avisarnos. Lamentamos que no puedan
           acompañarnos, pero los llevaremos en el corazón ese día.
         </p>
         {invitation.message && <p className="mt-5 rounded-2xl bg-ivory p-4 font-serif italic text-ink/70">“{invitation.message}”</p>}
@@ -143,11 +146,6 @@ function Summary({ data }: { data: InvitationData }) {
       <div className="mt-5 rounded-2xl bg-ivory px-5 py-5">
         <p className="font-serif text-5xl leading-none text-ink">{n}</p>
         <p className="mt-1 text-sm uppercase tracking-[0.18em] text-ink/55">{n === 1 ? 'persona confirmada' : 'personas confirmadas'}</p>
-        {invitation.respondentName && (
-          <p className="mt-3 text-[15px] text-ink/70">
-            a nombre de <b className="font-medium text-ink">{invitation.respondentName}</b>
-          </p>
-        )}
         {invitation.dietaryNotes && <p className="mt-2 text-xs text-ink/55">🍽 {invitation.dietaryNotes}</p>}
       </div>
       {invitation.message && <p className="mt-4 rounded-2xl bg-ivory p-4 font-serif italic text-ink/70">“{invitation.message}”</p>}
@@ -172,7 +170,6 @@ function RsvpForm({
   const [attending, setAttending] = useState<boolean | null>(
     invitation.status === 'PENDIENTE' ? null : invitation.status === 'CONFIRMADO',
   );
-  const [name, setName] = useState(invitation.respondentName ?? '');
   const [count, setCount] = useState(() => Math.min(max, Math.max(1, invitation.attendingCount || max)));
   const [diet, setDiet] = useState(invitation.dietaryNotes ?? '');
   const [showDiet, setShowDiet] = useState(Boolean(invitation.dietaryNotes));
@@ -184,7 +181,6 @@ function RsvpForm({
     e.preventDefault();
     setError(null);
     if (attending === null) return setError(solo ? 'Cuéntanos si podrás asistir.' : 'Cuéntanos si podrán asistir.');
-    if (name.trim().length < 3) return setError('Escribe tu nombre completo.');
     setSending(true);
     try {
       const fp = await getFingerprint();
@@ -193,7 +189,6 @@ function RsvpForm({
         headers: fp ? { 'X-Device-Fingerprint': fp } : undefined,
         body: {
           attending,
-          name: name.trim(),
           count: attending ? count : 0,
           dietaryNotes: attending && showDiet ? diet.trim() || null : null,
           message: message.trim() || null,
@@ -250,23 +245,6 @@ function RsvpForm({
             className="overflow-hidden"
           >
             <div className="space-y-6 pt-8">
-              <div>
-                <label className="label" htmlFor="rsvp-name">
-                  Tu nombre
-                </label>
-                <input
-                  id="rsvp-name"
-                  className="input"
-                  value={name}
-                  onChange={(e) => setName(e.target.value)}
-                  placeholder="Nombre y apellido"
-                  autoComplete="name"
-                  autoCapitalize="words"
-                  maxLength={120}
-                  required
-                />
-              </div>
-
               {attending && (
                 <div>
                   <p className="label text-center">¿Cuántas personas asistirán?</p>

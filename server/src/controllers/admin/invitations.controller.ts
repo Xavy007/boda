@@ -1,7 +1,7 @@
 import type { AdminRole, GuestSide } from '@prisma/client';
 import type { Request, Response } from 'express';
 import { prisma } from '../../lib/prisma.js';
-import { invitationContactSchema, invitationCreateSchema, invitationUpdateSchema } from '../../schemas/index.js';
+import { invitationContactSchema, invitationCreateSchema, invitationGiftSchema, invitationUpdateSchema } from '../../schemas/index.js';
 import { getSettings } from '../../services/event.service.js';
 import { importInvitations } from '../../services/import.service.js';
 import { generateToken, invitationUrl } from '../../services/token.service.js';
@@ -29,6 +29,11 @@ function visibleTo(role: AdminRole | undefined) {
   return side ? { side: { in: [side, 'AMBOS' as const] } } : {};
 }
 
+/** Los regalos los ven y marcan el administrador y los novios; la planner no */
+function canSeeGifts(role: AdminRole | undefined) {
+  return role === 'ADMIN' || role === 'NOVIA' || role === 'NOVIO';
+}
+
 function fillTemplate(template: string, inv: { familyName: string; maxGuests: number; token: string }) {
   return template
     .replaceAll('{nombre_familia}', cleanFamilyName(inv.familyName))
@@ -39,6 +44,7 @@ function fillTemplate(template: string, inv: { familyName: string; maxGuests: nu
 export async function listInvitations(req: Request, res: Response) {
   // Los novios solo cargan datos: no ven los links privados ni las respuestas
   const canSend = !forcedSide(req.adminRole);
+  const canSeeGift = canSeeGifts(req.adminRole);
   const [invitations, blocked, settings] = await Promise.all([
     prisma.invitation.findMany({
       where: visibleTo(req.adminRole),
@@ -78,6 +84,8 @@ export async function listInvitations(req: Request, res: Response) {
         attendingCount: canSend ? inv.attendingCount : 0,
         dietaryNotes: canSend ? inv.dietaryNotes : null,
         message: canSend ? inv.message : null,
+        giftReceivedAt: canSeeGift ? inv.giftReceivedAt : null,
+        giftNote: canSeeGift ? inv.giftNote : null,
         deviceCount: inv._count.devices,
         blockedCount: blockedMap.get(inv.id) ?? 0,
         link: canSend ? invitationUrl(inv.token) : null,
@@ -127,6 +135,24 @@ export async function updateContact(req: Request, res: Response) {
     where: { id: own.id },
     data,
     select: { familyName: true, isPerson: true, side: true, contactPhone: true, contactEmail: true },
+  });
+  res.json(inv);
+}
+
+/** Marca (o desmarca) que la invitación ya hizo su regalo, con una nota opcional */
+export async function updateGift(req: Request, res: Response) {
+  const { received, note } = invitationGiftSchema.parse(req.body);
+  const own = await prisma.invitation.findFirst({
+    where: { id: String(req.params.id), ...visibleTo(req.adminRole) },
+    select: { id: true, giftReceivedAt: true },
+  });
+  if (!own) throw new HttpError(404, 'NOT_FOUND', 'Invitación no encontrada');
+  const inv = await prisma.invitation.update({
+    where: { id: own.id },
+    data: received
+      ? { giftReceivedAt: own.giftReceivedAt ?? new Date(), giftNote: note }
+      : { giftReceivedAt: null, giftNote: null },
+    select: { giftReceivedAt: true, giftNote: true },
   });
   res.json(inv);
 }

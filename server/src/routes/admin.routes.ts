@@ -11,6 +11,7 @@ import {
   resetDevices,
   updateInvitation,
   updateContact,
+  updateGift,
 } from '../controllers/admin/invitations.controller.js';
 import { editPhoto, listPhotos, removePhoto, sortPhotos, uploadPhotos } from '../controllers/admin/photos.controller.js';
 import { exportExcel, getLogs, getStats } from '../controllers/admin/reports.controller.js';
@@ -38,6 +39,7 @@ adminRouter.get('/invitations', listInvitations);
 adminRouter.post('/invitations', createInvitation);
 adminRouter.post('/invitations/import', uploadSpreadsheet.single('file'), importFromFile);
 adminRouter.put('/invitations/:id/contact', updateContact);
+adminRouter.put('/invitations/:id/gift', requireRole('ADMIN', 'NOVIA', 'NOVIO'), updateGift);
 
 // ── Administrador y wedding planner: confirmaciones, enviar links, reporte e itinerario
 adminRouter.post('/invitations/:id/mark-sent', requireRole('ADMIN', 'PLANNER'), markSent);
