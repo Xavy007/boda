@@ -26,6 +26,14 @@ const SIDE_FILTERS: { value: SideFilter; label: string }[] = [
   { value: 'SIN_LADO', label: 'Sin asignar' },
 ];
 
+type GiftFilter = 'TODOS' | 'CON' | 'SIN';
+
+const GIFT_FILTERS: { value: GiftFilter; label: string }[] = [
+  { value: 'TODOS', label: '🎁 Todos' },
+  { value: 'CON', label: 'Con regalo' },
+  { value: 'SIN', label: 'Sin regalo' },
+];
+
 const normalize =(s: string) => s.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '');
 
 export default function Invitations() {
@@ -39,6 +47,7 @@ export default function Invitations() {
   const [items, setItems] = useState<AdminInvitation[] | null>(null);
   const [filter, setFilter] = useState<Filter>('TODOS');
   const [sideFilter, setSideFilter] = useState<SideFilter>('TODOS');
+  const [giftFilter, setGiftFilter] = useState<GiftFilter>('TODOS');
   const [query, setQuery] = useState('');
   const [detailId, setDetailId] = useState<string | null>(null);
   const [contactFor, setContactFor] = useState<AdminInvitation | null>(null);
@@ -66,11 +75,19 @@ export default function Invitations() {
     return items.filter((i) => {
       if (q && !normalize(i.familyName).includes(q)) return false;
       if (sideFilter !== 'TODOS' && (i.side ?? 'SIN_LADO') !== sideFilter) return false;
+      if (giftFilter !== 'TODOS' && Boolean(i.giftReceivedAt) !== (giftFilter === 'CON')) return false;
       if (filter === 'TODOS') return true;
       if (filter === 'BLOQUEADO') return i.blockedCount > 0;
       return i.displayStatus === filter;
     });
-  }, [items, filter, sideFilter, query]);
+  }, [items, filter, sideFilter, giftFilter, query]);
+
+  // Conteos de regalo dentro del lado elegido
+  const giftCounts = useMemo(() => {
+    const inSide = (items ?? []).filter((i) => sideFilter === 'TODOS' || (i.side ?? 'SIN_LADO') === sideFilter);
+    const con = inSide.filter((i) => i.giftReceivedAt).length;
+    return { TODOS: inSide.length, CON: con, SIN: inSide.length - con };
+  }, [items, sideFilter]);
 
   // Los conteos por estado respetan el lado elegido, y los de lado cuentan todas
   const counts = useMemo(() => {
@@ -133,6 +150,11 @@ export default function Invitations() {
                 Exportar
               </button>
             )}
+            {isAdmin && Boolean(items?.length) && (
+              <button type="button" className="btn border border-red-200 text-red-600" onClick={() => setDeletingAll(true)}>
+                Borrar todas
+              </button>
+            )}
           </>
         }
       />
@@ -157,6 +179,20 @@ export default function Invitations() {
           </button>
         ))}
       </div>
+      {showGifts && (
+        <div className="no-scrollbar -mx-4 mt-3 flex gap-2 overflow-x-auto px-4 pb-1">
+          {GIFT_FILTERS.map((f) => (
+            <button
+              key={f.value}
+              type="button"
+              onClick={() => setGiftFilter(f.value)}
+              className={`min-h-[40px] shrink-0 rounded-full px-4 text-sm font-medium transition ${giftFilter === f.value ? 'bg-sage text-white' : 'bg-white text-ink/70 ring-1 ring-ink/10'}`}
+            >
+              {f.label} <span className="opacity-60">{giftCounts[f.value]}</span>
+            </button>
+          ))}
+        </div>
+      )}
       {canSend && (
         <div className="no-scrollbar -mx-4 mt-3 flex gap-2 overflow-x-auto px-4 pb-1">
           {FILTERS.filter((f) => isAdmin || f.value !== 'BLOQUEADO').map((f) => (
@@ -239,13 +275,6 @@ export default function Invitations() {
           load();
         }}
       />
-      {isAdmin && Boolean(items?.length) && (
-        <div className="mt-10 border-t border-ink/[0.06] pt-6 text-center">
-          <button type="button" className="btn border border-red-200 px-4 text-sm text-red-600" onClick={() => setDeletingAll(true)}>
-            Borrar todas las invitaciones
-          </button>
-        </div>
-      )}
       <DeleteAllModal
         open={deletingAll}
         total={items?.length ?? 0}
