@@ -127,6 +127,17 @@ export default function Invitations() {
     }
   };
 
+  const removeOne = async (inv: AdminInvitation) => {
+    if (!confirm(`¿Borrar la invitación de "${inv.familyName}"? Su link dejará de funcionar y no se puede deshacer.`)) return;
+    try {
+      await api(`/api/admin/invitations/${inv.id}`, { method: 'DELETE' });
+      setItems((prev) => prev?.filter((i) => i.id !== inv.id) ?? null);
+      toast('Invitación borrada');
+    } catch {
+      toast('No se pudo borrar la invitación', 'error');
+    }
+  };
+
   const copyLink = async (inv: AdminInvitation) => {
     if (inv.link && (await copyText(inv.link))) toast('Link copiado');
   };
@@ -259,6 +270,11 @@ export default function Invitations() {
               {showGifts && (
                 <button type="button" onClick={() => setGiftFor(inv)} className="btn-outline min-h-[44px] px-4">
                   🎁 {inv.giftReceivedAt ? 'Regalo' : 'Marcar regalo'}
+                </button>
+              )}
+              {isAdmin && (
+                <button type="button" onClick={() => removeOne(inv)} className="btn min-h-[44px] border border-red-200 px-4 text-red-600 sm:ml-auto">
+                  Borrar
                 </button>
               )}
             </div>
