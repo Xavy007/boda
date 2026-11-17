@@ -2,6 +2,7 @@ import { Router } from 'express';
 import { login, logout, me } from '../controllers/admin/auth.controller.js';
 import {
   createInvitation,
+  deleteAllInvitations,
   deleteInvitation,
   getInvitationDetail,
   importFromFile,
@@ -51,6 +52,7 @@ adminRouter.put('/itinerary', requireRole('ADMIN', 'PLANNER'), updateItinerary);
 // ── Solo el administrador ────────────────────────────────────────────────────
 adminRouter.use(requireRole('ADMIN'));
 
+adminRouter.delete('/invitations', deleteAllInvitations);
 adminRouter.get('/invitations/:id', getInvitationDetail);
 adminRouter.put('/invitations/:id', updateInvitation);
 adminRouter.delete('/invitations/:id', deleteInvitation);

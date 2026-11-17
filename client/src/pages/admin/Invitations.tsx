@@ -35,6 +35,7 @@ export default function Invitations() {
   const canSend = !isCouple(role);
   const showGifts = canSeeGifts(role);
   const [giftFor, setGiftFor] = useState<AdminInvitation | null>(null);
+  const [deletingAll, setDeletingAll] = useState(false);
   const [items, setItems] = useState<AdminInvitation[] | null>(null);
   const [filter, setFilter] = useState<Filter>('TODOS');
   const [sideFilter, setSideFilter] = useState<SideFilter>('TODOS');
@@ -235,6 +236,23 @@ export default function Invitations() {
         onSaved={() => {
           setContactFor(null);
           toast('Datos guardados');
+          load();
+        }}
+      />
+      {isAdmin && Boolean(items?.length) && (
+        <div className="mt-10 border-t border-ink/[0.06] pt-6 text-center">
+          <button type="button" className="btn border border-red-200 px-4 text-sm text-red-600" onClick={() => setDeletingAll(true)}>
+            Borrar todas las invitaciones
+          </button>
+        </div>
+      )}
+      <DeleteAllModal
+        open={deletingAll}
+        total={items?.length ?? 0}
+        onClose={() => setDeletingAll(false)}
+        onDone={(removed) => {
+          setDeletingAll(false);
+          toast(`${removed} invitaciones borradas`);
           load();
         }}
       />
@@ -490,6 +508,52 @@ function ContactModal({ invitation, onClose, onSaved }: { invitation: AdminInvit
         </Field>
         {error && <p className="rounded-xl bg-red-50 px-4 py-3 text-sm text-red-700">{error}</p>}
         <button type="submit" className="btn-primary" disabled={saving}>{saving ? 'Guardando…' : 'Guardar'}</button>
+      </form>
+    </Modal>
+  );
+}
+
+// ── Borrar todas (solo administrador) ────────────────────────────────────────
+const DELETE_ALL_PHRASE = 'BORRAR TODO';
+
+function DeleteAllModal({ open, total, onClose, onDone }: { open: boolean; total: number; onClose: () => void; onDone: (removed: number) => void }) {
+  const [phrase, setPhrase] = useState('');
+  const [error, setError] = useState<string | null>(null);
+  const [deleting, setDeleting] = useState(false);
+
+  useEffect(() => {
+    setPhrase('');
+    setError(null);
+  }, [open]);
+
+  const submit = async (e: FormEvent) => {
+    e.preventDefault();
+    setDeleting(true);
+    setError(null);
+    try {
+      const { removed } = await api<{ removed: number }>('/api/admin/invitations', { method: 'DELETE', body: { confirm: phrase.trim() } });
+      onDone(removed);
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : 'No se pudieron borrar');
+    } finally {
+      setDeleting(false);
+    }
+  };
+
+  return (
+    <Modal open={open} onClose={onClose} title="Borrar todas las invitaciones">
+      <form onSubmit={submit} className="grid gap-4">
+        <p className="rounded-2xl bg-red-50 p-4 text-sm text-red-700">
+          Se borrarán las <b>{total} invitaciones</b> con sus respuestas, regalos marcados y dispositivos. Los links enviados dejarán de funcionar. <b>No se puede deshacer.</b>
+        </p>
+        <p className="text-sm text-ink/65">Te recomendamos exportar el Excel antes.</p>
+        <Field label={`Escribe ${DELETE_ALL_PHRASE} para confirmar`}>
+          <input className="input" value={phrase} onChange={(e) => setPhrase(e.target.value)} autoComplete="off" autoFocus />
+        </Field>
+        {error && <p className="rounded-xl bg-red-50 px-4 py-3 text-sm text-red-700">{error}</p>}
+        <button type="submit" className="btn bg-red-600 text-white disabled:opacity-40" disabled={deleting || phrase.trim() !== DELETE_ALL_PHRASE}>
+          {deleting ? 'Borrando…' : 'Borrar todas'}
+        </button>
       </form>
     </Modal>
   );

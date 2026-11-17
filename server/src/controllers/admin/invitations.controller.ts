@@ -162,6 +162,17 @@ export async function deleteInvitation(req: Request, res: Response) {
   res.status(204).end();
 }
 
+export const DELETE_ALL_CONFIRMATION = 'BORRAR TODO';
+
+/** Borra todas las invitaciones (con sus dispositivos y respuestas). Pide la frase de confirmación. */
+export async function deleteAllInvitations(req: Request, res: Response) {
+  if (req.body?.confirm !== DELETE_ALL_CONFIRMATION) {
+    throw new HttpError(400, 'CONFIRMATION_REQUIRED', `Escribe "${DELETE_ALL_CONFIRMATION}" para confirmar`);
+  }
+  const { count } = await prisma.invitation.deleteMany({});
+  res.json({ removed: count });
+}
+
 export async function importFromFile(req: Request, res: Response) {
   if (!req.file) throw new HttpError(400, 'NO_FILE', 'Adjunta un archivo .csv o .xlsx');
   const result = await importInvitations(req.file.buffer, req.file.originalname, forcedSide(req.adminRole));
